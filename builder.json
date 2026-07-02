@@ -1,0 +1,18 @@
+{
+  "project": "doctoral-nexus",
+  "platform": "ios",
+  "github": {
+    "owner": "drmax3000",
+    "repo": "doctoral-nexus"
+  },
+  "ios": {
+    "path": "./"
+  },
+  "flutter": {
+    "watch": {}
+  },
+  "reactNative": {
+    "expo": true
+  },
+  "mobai": {}
+}
