@@ -6,7 +6,7 @@
     "repo": "doctoral-nexus"
   },
   "ios": {
-    "path": "./"
+    "path": "ios"
   },
   "flutter": {
     "watch": {}
