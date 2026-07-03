@@ -74,6 +74,8 @@ function getDb() {
     CREATE INDEX IF NOT EXISTS idx_observations_created ON observations (created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_observations_node    ON observations (node_id);
     CREATE INDEX IF NOT EXISTS idx_nodes_author         ON nodes (author);
+    CREATE INDEX IF NOT EXISTS idx_nodes_updated_at     ON nodes (updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_nodes_list_sort      ON nodes (author, capitulo, title);
   `);
 
   // FTS5 con degradación elegante: si el build de SQLite no lo trae, caemos a LIKE.
