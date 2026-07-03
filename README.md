@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://img.icons8.com/?size=256&id=aLd2t2k644P7&format=png" alt="Nexus Logo" width="120" />
+  <img src="./assets/images/logo-glow.png" alt="Nexus Logo" width="120" />
   <h1>🌌 DOCTORAL NEXUS</h1>
   <p><em>The ultimate mobile research and synthesis ecosystem for academic minds.</em></p>
 
