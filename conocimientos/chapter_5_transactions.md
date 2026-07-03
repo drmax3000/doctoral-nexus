@@ -1,4 +1,6 @@
 ---
+author: Silvia Botros & Jeremy Tinley
+tema: High Performance MySQL
 source: Database Internals.pdf
 pages: 141-189
 extraction_date: 2026-07-02 12:33:16

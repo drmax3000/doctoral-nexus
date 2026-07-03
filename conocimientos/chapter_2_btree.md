@@ -1,7 +1,9 @@
 ---
-source: Database Internals.pdf
-pages: 56-85
-extraction_date: 2026-07-02 12:32:12
+author: Silvia Botros & Jeremy Tinley
+tema: High Performance MySQL
+source: high-performance-mysql-4th.pdf
+pages: 40-75
+extraction_date: 2026-07-02 13:02:11
 ---
 
 # **Chapter 2. B-Tree Basics** 

@@ -1,4 +1,6 @@
 ---
+author: Silvia Botros & Jeremy Tinley
+tema: High Performance MySQL
 source: high-performance-mysql-4th.pdf
 pages: 23-40
 extraction_date: 2026-07-02 13:01:48

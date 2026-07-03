@@ -179,9 +179,13 @@ export default function DoctoralNexusCore() {
     return (
       <View style={styles.emptyContainer}>
         <Text style={styles.emptyGlyph}>◌</Text>
-        <Text style={styles.emptyTitle}>Nothing matches “{searchQuery}”</Text>
+        <Text style={styles.emptyTitle}>
+          {nodes.length === 0 ? "Knowledge base is empty" : `Nothing matches “${searchQuery}”`}
+        </Text>
         <Text style={styles.emptyText}>
-          Your knowledge base does contain these threads — pull one:
+          {nodes.length === 0
+            ? "Run 'npm run ingest' to populate your SQLite database with documents."
+            : "Your knowledge base does contain these threads — pull one:"}
         </Text>
 
         <View style={styles.suggestionWrap}>
