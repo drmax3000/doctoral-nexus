@@ -1,7 +1,7 @@
 <div align="center">
   <img src="https://img.icons8.com/?size=256&id=aLd2t2k644P7&format=png" alt="Nexus Logo" width="120" />
   <h1>🌌 DOCTORAL NEXUS</h1>
-  <p><em>El ecosistema definitivo de síntesis e investigación móvil para mentes académicas.</em></p>
+  <p><em>The ultimate mobile research and synthesis ecosystem for academic minds.</em></p>
 
   [![Expo](https://img.shields.io/badge/Expo-57.0.0-black?style=for-the-badge&logo=expo)](https://expo.dev)
   [![React Native](https://img.shields.io/badge/React_Native-Cross_Platform-blue?style=for-the-badge&logo=react)](https://reactnative.dev)
@@ -11,30 +11,30 @@
 
 ---
 
-## ✦ La Visión
+## ✦ The Vision
 
-**Doctoral Nexus** no es un simple lector de PDFs. Es una plataforma cruzada (*cross-platform* nativa para **iOS**, **Android** y **Web**) diseñada metodológicamente para transformar la lectura pasiva de un doctorante en una constelación interactiva de conocimientos. 
+**Doctoral Nexus** is not just another PDF reader. It is a native, cross-platform ecosystem (**iOS**, **Android**, and **Web**) methodologically designed to transform a doctoral student's passive reading into an interactive constellation of knowledge.
 
-El sistema extrae, ingiere y correlaciona documentos en bruto (Markdown), permitiéndote capturar **Insights** (observaciones) catalogados según su dimensión ontológica de investigación, todo sin abandonar tu flujo de lectura.
-
----
-
-## 📱 Ecosistema Multi-Plataforma
-Este código fuente unificado se compila nativamente gracias al poder de **Expo Router**:
-- 🍎 **iOS:** Experiencia fluida con tipografía nativa (Georgia) y animaciones Spring-based.
-- 🤖 **Android:** Renderizado acelerado, micro-interacciones al presionar tarjetas y adaptabilidad Material.
-- 🌐 **Web (Responsive):** Split View para pantallas mayores a 920px; convierte tu navegador en una estación de análisis profundo.
+The system extracts, ingests, and correlates raw documents (Markdown), empowering you to capture **Insights** (observations) categorized by their ontological research dimension, all without ever leaving your reading flow.
 
 ---
 
-## 🧬 Arquitectura de Datos (Motor SQLite Zero-Friction)
+## 📱 Cross-Platform Ecosystem
+This unified source code compiles natively thanks to the power of **Expo Router**:
+- 🍎 **iOS:** Fluid experience featuring native typography (Georgia) and Spring-based micro-animations.
+- 🤖 **Android:** Hardware-accelerated rendering, touch-responsive card scaling, and Material adaptability.
+- 🌐 **Web (Responsive):** Split View for screens wider than 920px; transforming your browser into a deep-analysis workstation.
 
-En el corazón de Doctoral Nexus late un motor local súper optimizado (vía `node:sqlite` sin dependencias externas pesadas):
+---
 
-- **WAL (Write-Ahead Logging):** Permite lecturas concurrentes de la UI mientras la IA ingiere millones de tokens en el backend.
-- **FTS5 (Full-Text Search):** Búsqueda de texto completo ultra-rápida en toda tu literatura.
-- **Idempotencia Hashing:** Los scripts de ingestión (`npm run ingest`) calculan hashes SHA-1 para detectar qué literatura es nueva y cuál solo cambió una coma.
-- **Taxonomía Dimensional:** Las observaciones se clasifican a nivel de base de datos en 4 dimensiones estrictas: 
+## 🧬 Data Architecture (Zero-Friction SQLite Engine)
+
+At the heart of Doctoral Nexus beats a highly-optimized local engine (via Node's builtin `node:sqlite` with zero external dependencies):
+
+- **WAL (Write-Ahead Logging):** Enables concurrent UI reads while the AI ingests millions of tokens in the backend without locking.
+- **FTS5 (Full-Text Search):** Lightning-fast, full-text queries across your entire literature library.
+- **Idempotent Hashing:** The ingestion engine (`npm run ingest`) calculates SHA-1 hashes to intelligently detect what literature is new and what merely had a typo corrected.
+- **Dimensional Taxonomy:** Observations are strictly categorized at the database level into 4 core dimensions:
   - 🟪 `THEORETICAL`
   - 🟦 `METHODOLOGICAL`
   - 🟩 `EMPIRICAL`
@@ -42,32 +42,32 @@ En el corazón de Doctoral Nexus late un motor local súper optimizado (vía `no
 
 ---
 
-## 🚀 Puesta en Marcha (El Ritual Diario)
+## 🚀 Getting Started (The Daily Ritual)
 
-Empezar tu día de investigación no debería requerir acordarte de comandos tediosos. Hemos creado una automatización perfecta para ti en Windows.
+Starting your research day shouldn't require memorizing terminal commands. We've created a seamless automation script for Windows.
 
-Simplemente haz doble clic o ejecuta en tu terminal:
+Simply double-click or run the following in your terminal:
 
 ```bat
 .\iniciar.bat
 ```
 
-**Lo que hace tras bambalinas:**
-1. ☁️ **Copia de seguridad en GitHub:** Toma todas tus nuevas notas, scripts y modificaciones, crea un commit automático y las asegura en tu repositorio remoto.
-2. ⚡ **Despliegue de Sistema:** Lanza el servidor de **Expo** de forma instantánea. Escanea el código QR desde tu iPhone/Android o pulsa `w` para la experiencia de escritorio.
+**What happens behind the scenes:**
+1. ☁️ **GitHub Backup:** It automatically stages your latest code, scripts, and notes, creates an automated commit, and pushes them safely to your remote repository.
+2. ⚡ **System Deployment:** It instantly boots up the **Expo** server. Scan the QR code from your iPhone/Android or press `w` for the desktop experience.
 
 ---
 
-## 🤖 Orquestación de Agentes IA
+## 🤖 AI Agent Orchestration
 
-El código y las directivas arquitectónicas de este repositorio están codificados y auditados por inteligencia artificial trabajando en sinergia:
-- **Claude (Diseño UX/UI):** Diseña los contratos de la API y las heurísticas de la interfaz de usuario con precisión atómica.
-- **Google Antigravity (Ingeniería de Software):** Agente ejecutor que implementa bases de datos en C/C++, reescribe enrutamientos en React, integra el SDK de Expo y gestiona las operaciones en terminal en tiempo real.
+The source code, UX heuristics, and architectural directives of this repository are continuously written and audited by artificial intelligence working in absolute synergy:
+- **Claude (UX/UI Designer):** Architects the API contracts, user flows, and aesthetic heuristics with atomic precision.
+- **Google Antigravity (Software Engineer):** The executor agent that implements C/C++ backed databases, rewrites React routing, integrates the Expo SDK, and manages real-time terminal operations.
 
-> *"La interfaz es importante, pero el funcionamiento es sagrado. El borrador del doctorante jamás debe borrarse ante un fallo de red." — Principios de Diseño de Doctoral Nexus.*
+> *"The interface is important, but the underlying mechanics are sacred. A doctoral student's draft must never be lost to a network failure." — Doctoral Nexus Design Principles.*
 
 ---
 
 <div align="center">
-  <sub>Construido con maestría en el abismo del código. 🌙✨</sub>
+  <sub>Masterfully crafted in the abyss of code. 🌙✨</sub>
 </div>
