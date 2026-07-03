@@ -1,0 +1,45 @@
+name: Web Build
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'Desarrollo_Movil/doctoral-nexus/**'
+      - '.github/workflows/web-build.yml'
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Expo
+        uses: expo/expo-github-action@v8
+        with:
+          expo-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        working-directory: Desarrollo_Movil/doctoral-nexus
+        run: npm ci
+
+      - name: Export Web Build
+        working-directory: Desarrollo_Movil/doctoral-nexus
+        run: npx expo export --platform web
+
+      - name: Upload Web Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: Desarrollo_Movil/doctoral-nexus/dist/
+          retention-days: 7
