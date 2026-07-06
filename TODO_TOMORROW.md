@@ -19,10 +19,10 @@ git push && npx expo start
 *(Nota: El commit ya está hecho localmente, solo falta empujarlo).*
 
 ## ⚠️ Brecha del Pipeline: Cobertura de Análisis 7D
-Estado de `base_conocimiento_doctoral/3_analisis_7D/` (extracciones listas, análisis pendientes):
-- ✅ **Systems Performance:** 14 capítulos analizados
+Estado de `base_conocimiento_doctoral/3_analisis_7D/` (análisis nuevos en inglés):
+- ✅ **Systems Performance:** 14 capítulos analizados (legacy, en español)
+- ✅ **Database Internals:** 18 análisis — libro completo (Parte I Storage Engines + Parte II Distributed Systems, intros y conclusiones incluidas; bibliografía omitida)
 - 🟡 **Fundamentals of Data Engineering:** solo 1 análisis (Part I)
-- 🟡 **Database Internals:** extracciones completas, solo 1 análisis (Ch2 B-Tree)
 - 🟡 **High Performance MySQL:** extracciones completas, solo 1 análisis (Ch1 Arch)
 - ❌ **Database Management Systems (Ramakrishnan):** PDF crudo sin extraer ni analizar
 
