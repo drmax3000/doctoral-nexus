@@ -18,6 +18,14 @@ git push && npx expo start
 ```
 *(Nota: El commit ya está hecho localmente, solo falta empujarlo).*
 
+## ⚠️ Brecha del Pipeline: Cobertura de Análisis 7D
+Estado de `base_conocimiento_doctoral/3_analisis_7D/` (extracciones listas, análisis pendientes):
+- ✅ **Systems Performance:** 14 capítulos analizados
+- 🟡 **Fundamentals of Data Engineering:** solo 1 análisis (Part I)
+- 🟡 **Database Internals:** extracciones completas, solo 1 análisis (Ch2 B-Tree)
+- 🟡 **High Performance MySQL:** extracciones completas, solo 1 análisis (Ch1 Arch)
+- ❌ **Database Management Systems (Ramakrishnan):** PDF crudo sin extraer ni analizar
+
 ## 🎯 Próximos Pasos (Fase 3: Inteligencia & Análisis)
 Cuando me llames mañana, podemos atacar las siguientes fronteras:
 1. **Sugerencias e Inteligencia IA:** Crear un agente (o endpoint local) que, al estar leyendo un capítulo, te sugiera conexiones con otros nodos de la librería.
