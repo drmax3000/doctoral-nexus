@@ -20,7 +20,7 @@ git push && npx expo start
 
 ## ⚠️ Brecha del Pipeline: Cobertura de Análisis 7D
 Estado de `base_conocimiento_doctoral/3_analisis_7D/` (análisis nuevos en inglés):
-- ✅ **Systems Performance:** 14 capítulos analizados (legacy, en español)
+- ✅ **Systems Performance:** 14 capítulos analizados (traducidos al inglés)
 - ✅ **Database Internals:** 18 análisis — libro completo (Parte I Storage Engines + Parte II Distributed Systems, intros y conclusiones incluidas; bibliografía omitida)
 - 🟡 **Fundamentals of Data Engineering:** solo 1 análisis (Part I)
 - 🟡 **High Performance MySQL:** extracciones completas, solo 1 análisis (Ch1 Arch)
