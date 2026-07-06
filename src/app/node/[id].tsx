@@ -108,6 +108,35 @@ function SynthesisPanel({
   );
 }
 
+function AiSuggestionsCard({ suggestions, onSelect }: { suggestions: any[], onSelect: (id: string) => void }) {
+  if (!suggestions || suggestions.length === 0) return null;
+
+  return (
+    <View style={styles.suggestionsContainer}>
+      <Text style={styles.suggestionsTitle}>✧ AI KNOWLEDGE CONNECTIONS</Text>
+      <Text style={styles.suggestionsSubtitle}>
+        Based on the current theoretical framework, consider exploring:
+      </Text>
+      {suggestions.map((s, idx) => (
+        <Pressable 
+          key={s.id} 
+          style={({pressed}) => [styles.suggestionCard, pressed && { opacity: 0.7 }]}
+          onPress={() => onSelect(s.id)}
+        >
+          <View style={styles.sugHeader}>
+            <Text style={styles.sugAuthor}>{typeof s.author === 'object' ? JSON.stringify(s.author) : (s.author || 'Unknown')} {s.capitulo ? `· ${typeof s.capitulo === 'object' ? JSON.stringify(s.capitulo) : s.capitulo}` : ''}</Text>
+          </View>
+          <Text style={styles.sugTitle} numberOfLines={2}>{typeof s.title === 'object' ? JSON.stringify(s.title) : s.title}</Text>
+          <View style={styles.metaRow}>
+            {s.tema && <Text style={styles.sugMeta}>{typeof s.tema === 'object' ? JSON.stringify(s.tema) : s.tema}</Text>}
+            {s.enfoque && <Text style={styles.sugMeta}> · {typeof s.enfoque === 'object' ? JSON.stringify(s.enfoque) : s.enfoque}</Text>}
+          </View>
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
 export default function NodeDetailScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -149,6 +178,18 @@ export default function NodeDetailScreen() {
       setLoadingNode(false);
     }
   }, [nodeData, id]);
+
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  React.useEffect(() => {
+    if (node?.id) {
+      fetchWithTimeout(`${API_BASE}/api/v1/nexus/suggestions?nodeId=${node.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setSuggestions(data);
+        })
+        .catch(err => console.error("AI Suggestions error:", err));
+    }
+  }, [node?.id]);
 
   if (loadingNode) {
     return (
@@ -227,6 +268,11 @@ export default function NodeDetailScreen() {
       </View>
 
       <Markdown style={markdownStyles}>{node.content || ''}</Markdown>
+      
+      <AiSuggestionsCard 
+        suggestions={suggestions} 
+        onSelect={(suggestedId) => router.push(`/node/${suggestedId}`)} 
+      />
     </ScrollView>
   );
 
@@ -409,6 +455,29 @@ const styles = StyleSheet.create({
   saveButtonText: { color: C.textFaint, fontSize: 12, fontWeight: '900', letterSpacing: 2 },
 
   savedText: { color: '#34D399', fontSize: 15, fontWeight: '800', paddingVertical: 24, textAlign: 'center' },
+
+  /* AI Suggestions */
+  suggestionsContainer: {
+    marginTop: 40,
+    marginBottom: 40,
+    paddingTop: 30,
+    borderTopWidth: 1,
+    borderTopColor: C.line,
+  },
+  suggestionsTitle: { color: C.cyan, fontSize: 11, fontWeight: '900', letterSpacing: 3, marginBottom: 6 },
+  suggestionsSubtitle: { color: C.textDim, fontSize: 14, fontFamily: SERIF, marginBottom: 20 },
+  suggestionCard: {
+    backgroundColor: 'rgba(16, 21, 38, 0.4)',
+    borderWidth: 1,
+    borderColor: 'rgba(103, 232, 249, 0.15)',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+  },
+  sugHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  sugAuthor: { color: C.textFaint, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  sugTitle: { color: C.text, fontSize: 16, fontFamily: SERIF, lineHeight: 22, marginBottom: 8 },
+  sugMeta: { color: C.violet, fontSize: 12, fontWeight: '600' },
 });
 
 /* Lectura profunda: cuerpo serif 17/30 — la decisión tipográfica que separa

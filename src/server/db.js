@@ -311,3 +311,129 @@ module.exports = {
   listObservations,
   createObservation,
 };
+
+function getAiSuggestions(nodeId) {
+  const db = getDb();
+  const node = getNodeById(nodeId);
+  if (!node) return [];
+
+  const matchParts = [];
+  if (node.tema) matchParts.push(node.tema);
+  if (node.enfoque) matchParts.push(node.enfoque);
+  
+  if (matchParts.length === 0) {
+    // Si no tiene tema ni enfoque, sugerir 3 aleatorios del mismo autor
+    if (node.author) {
+      const rows = db.prepare(`
+        SELECT ${NODE_LIST_COLS} FROM nodes 
+        WHERE author = ? AND id != ? LIMIT 3
+      `).all(node.author, nodeId);
+      return rows.map(r => rowToNode(r, false));
+    }
+    return [];
+  }
+  
+  const q = matchParts.join(' ');
+  
+  if (_fts) {
+    const match = q
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map(t => `"${t}"`)
+      .join(' OR '); 
+    
+    if (match) {
+      const rows = db.prepare(`
+        SELECT ${NODE_LIST_COLS}
+        FROM nodes
+        WHERE rowid IN (SELECT rowid FROM nodes_fts WHERE nodes_fts MATCH ?)
+          AND id != ?
+        LIMIT 3
+      `).all(match, nodeId);
+      if (rows.length > 0) return rows.map(r => rowToNode(r, false));
+    }
+  }
+  
+  const likeTema = node.tema ? `%${node.tema}%` : '---none---';
+  const likeEnfoque = node.enfoque ? `%${node.enfoque}%` : '---none---';
+  
+  const rows = db.prepare(`
+    SELECT ${NODE_LIST_COLS}
+    FROM nodes
+    WHERE (tema LIKE ? OR enfoque LIKE ?)
+      AND id != ?
+    LIMIT 3
+  `).all(likeTema, likeEnfoque, nodeId);
+  
+  return rows.map(r => rowToNode(r, false));
+}
+
+module.exports = {
+  getDb,
+  hasFts,
+  DB_PATH,
+  DIMENSIONS,
+  listNodes,
+  getNodeById,
+  upsertNode,
+  listObservations,
+  createObservation,
+  getAiSuggestions,
+};
+
+function getTelemetry() {
+  const db = getDb();
+  
+  // Total de nodos y distribución de estatus
+  const nodesTotal = db.prepare('SELECT count(*) as c FROM nodes').get().c;
+  
+  // Nodos por tema (Top 3)
+  const nodesByTema = db.prepare(`
+    SELECT tema, count(*) as count 
+    FROM nodes 
+    WHERE tema IS NOT NULL 
+    GROUP BY tema 
+    ORDER BY count DESC 
+    LIMIT 3
+  `).all();
+  
+  // Total de observaciones y desglose por dimensión
+  const obsTotal = db.prepare('SELECT count(*) as c FROM observations').get().c;
+  
+  const obsByDimension = db.prepare(`
+    SELECT dimension, count(*) as count 
+    FROM observations 
+    GROUP BY dimension
+  `).all();
+
+  return {
+    nodes: {
+      total: nodesTotal,
+      byTema: nodesByTema
+    },
+    observations: {
+      total: obsTotal,
+      byDimension: obsByDimension
+    },
+    system: {
+      ftsEnabled: _fts,
+      dbSizeEstimate: 'Optimal' // Opcional, podría calcularse
+    }
+  };
+}
+
+module.exports = {
+  getDb,
+  hasFts,
+  DB_PATH,
+  DIMENSIONS,
+  listNodes,
+  getNodeById,
+  upsertNode,
+  listObservations,
+  createObservation,
+  getAiSuggestions,
+  getTelemetry,
+};

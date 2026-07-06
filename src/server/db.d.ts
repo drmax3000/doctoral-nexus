@@ -54,3 +54,5 @@ export declare function createObservation(input: {
   dimension: string;
   nodeId?: string | null;
 }): ApiObservation;
+export declare function getAiSuggestions(nodeId: string): ApiNode[];
+export declare function getTelemetry(): any;
