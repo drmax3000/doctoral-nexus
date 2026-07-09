@@ -11,71 +11,71 @@
 
 ---
 
-## ✦ La Visión (The Vision)
+## ✦ The Vision
 
-**Doctoral Nexus** no es simplemente un lector de PDFs. Es un ecosistema nativo y multiplataforma (**iOS**, **Android** y **Web**) diseñado metodológicamente para transformar la lectura pasiva del investigador en una constelación de conocimiento interactivo.
+**Doctoral Nexus** is not just a PDF reader. It is a native, cross-platform ecosystem (**iOS**, **Android**, and **Web**) methodologically designed to transform a researcher's passive reading into a constellation of interactive knowledge.
 
-El sistema extrae, ingiere y correlaciona documentos en bruto (Markdown), empoderando al doctorante para capturar **Observaciones (Insights)** categorizadas bajo sus dimensiones ontológicas sin perder el flujo de lectura.
+The system extracts, ingests, and correlates raw documents (Markdown), empowering the doctoral candidate to capture **Observations (Insights)** categorized under their ontological dimensions without breaking the reading flow.
 
 ---
 
-## 🏁 Estado del Proyecto
+## 🏁 Project Status
 
-El desarrollo del proyecto está seccionado en fases estratégicas. Al momento, las Fases 1 y 2 están **100% completadas**, logrando un entorno autónomo y fuera de línea (Offline-first).
+Development is organized into strategic phases. As of now, Phases 1 and 2 are **100% complete**, delivering a fully autonomous, offline-first environment.
 
-### ✅ Fase 1: Arquitectura Base y UI "Dark Nexus"
-- **Ecosistema Multiplataforma:** Compilación con **Expo Router** hacia iOS, Android y Web.
-- **Split-View Automático:** En navegadores (ancho > 920px), la interfaz se divide para permitir la lectura en el panel izquierdo y la síntesis en el panel derecho.
-- **Diseño Inmersivo:** Tema oscuro estricto (`#05060E`), con tipografía Serif (`Georgia`) optimizada para largas jornadas de lectura académica, y tipografía Sans-Serif nativa para controles.
-- **Micro-animaciones:** Docks expandibles y transiciones fluidas basadas en físicas de resorte (Spring-based).
-- **Taxonomía Dimensional:** Las dimensiones ontológicas de investigación tienen asignaciones visuales rígidas que viajan con el dato a lo largo de la app:
+### ✅ Phase 1: Base Architecture & "Dark Nexus" UI
+- **Cross-Platform Ecosystem:** Built with **Expo Router** targeting iOS, Android, and Web.
+- **Automatic Split-View:** On browsers (width > 920px), the interface splits into a reading pane on the left and a synthesis pane on the right.
+- **Immersive Design:** A strict dark theme (`#05060E`), with Serif typography (`Georgia`) optimized for long academic reading sessions, and a native Sans-Serif typeface for controls.
+- **Micro-animations:** Expandable docks and spring-based fluid transitions.
+- **Dimensional Taxonomy:** Ontological research dimensions carry rigid visual assignments that travel with the data throughout the app:
   - 🟪 `THEORETICAL` (#A78BFA)
   - 🟦 `METHODOLOGICAL` (#67E8F9)
   - 🟩 `EMPIRICAL` (#34D399)
   - 🟨 `ANALYTICAL` (#FBBF24)
 
-### ✅ Fase 2: Motor de Datos "Local-First"
-- **Base de Datos SQLite Integrada:** Integración pura mediante `node:sqlite` usando rutas API (`+api.ts`) del propio servidor de Expo, **eliminando la dependencia de un backend Python externo**.
-- **WAL y FTS5:** Modo *Write-Ahead Logging* para concurrencia masiva sin bloqueos, y motor *Full-Text Search* para búsquedas instantáneas en toda la literatura.
-- **Ingestión Idempotente (`npm run ingest`):** Algoritmo que calcula hashes SHA-1 para el contenido Markdown. Solo ingiere capítulos nuevos o modificados, asegurando que la base de datos `nexus.db` jamás pierda sincronía.
-- **Pipelines CI/CD (GitHub Actions):** Flujos de trabajo nativos en la nube para automatizar la construcción de versiones en `.ipa` (iOS), `.apk` (Android) y la página estática Web, cada uno con su respectivo historial (`CHANGELOG.md`).
-- **Deep-linking Relacional:** Las observaciones guardadas rastrean exactamente el capítulo de origen. Tocar el símbolo `◈` en el historial abre automáticamente el texto raíz usando un fetch directo por ID.
+### ✅ Phase 2: "Local-First" Data Engine
+- **Embedded SQLite Database:** Pure integration via `node:sqlite` using Expo's own server API routes (`+api.ts`), **eliminating the dependency on an external Python backend**.
+- **WAL and FTS5:** Write-Ahead Logging mode for lock-free concurrent access, and a Full-Text Search engine for instant searches across the entire literature.
+- **Idempotent Ingestion (`npm run ingest`):** An algorithm that computes SHA-1 hashes of Markdown content. Only new or modified chapters are ingested, ensuring the `nexus.db` database never falls out of sync.
+- **CI/CD Pipelines (GitHub Actions):** Native cloud workflows automating the build of `.ipa` (iOS), `.apk` (Android), and the static Web export, each with its own history (`CHANGELOG.md`).
+- **Relational Deep-linking:** Saved observations track their exact source chapter. Tapping the `◈` symbol in the history automatically opens the source text via a direct fetch by ID.
 
-### 🚀 Fase 3: Inteligencia y Telemetría (En Desarrollo)
-- **Sugerencias de IA:** Motor que analiza temas y enfoques mientras lees para sugerir hiper-conexiones (Deep-links) a otros nodos de tu librería.
-- **Dashboard Explore:** Panel de telemetría para medir el progreso de la investigación (ej. volumen empírico vs teórico).
-- **Highlight Nativo:** Refinamiento visual para búsquedas FTS5.
+### 🚀 Phase 3: Intelligence & Telemetry (In Progress)
+- **AI Suggestions:** An engine that analyzes topics and approaches while reading to suggest hyper-connections (deep-links) to other nodes in the library.
+- **Explore Dashboard:** A telemetry panel measuring research progress (e.g., empirical vs. theoretical volume).
+- **Native Highlighting:** Visual refinement for FTS5 search results.
 
 ---
 
-## 🛠 Modo de Empleo (The Daily Ritual)
+## 🛠 Daily Usage
 
-No necesitas memorizar comandos. Hemos provisto una capa de automatización de infraestructura en la carpeta de scripts:
+You don't need to memorize commands. An infrastructure automation layer is provided in the scripts folder:
 
-### 1. El Auto-Boot y Respaldo
-Solo ejecuta en tu terminal:
+### 1. Auto-Boot and Backup
+Just run in your terminal:
 ```bat
 .\iniciar.bat
 ```
-- ☁️ **Respaldo:** Genera commits automáticos y envía (*push*) todos los archivos (Markdown, Scripts) a GitHub.
-- ⚡ **Despliegue:** Inicia el servidor de Expo (puerto 8081).
-- 🔍 **Verificación (Pre-flight):** Corre un test `health_check.js` para asegurar que `nexus.db` y las APIs estén al 100% respondiendo (Código HTTP 200) antes de tocar el código.
+- ☁️ **Backup:** Generates automatic commits and pushes all files (Markdown, scripts) to GitHub.
+- ⚡ **Deploy:** Starts the Expo server (port 8081).
+- 🔍 **Pre-flight Check:** Runs a `health_check.js` test to ensure `nexus.db` and the APIs are responding 100% (HTTP 200) before touching any code.
 
-### 2. La Ingestión de Conocimiento
-Si colocas un nuevo libro o capítulo Markdown en la carpeta `./conocimientos`, actualiza la base de datos con:
+### 2. Knowledge Ingestion
+If you place a new book or Markdown chapter in the `./conocimientos` folder, update the database with:
 ```bash
 npm run ingest
 ```
 
 ---
 
-## 🤖 Orquestación de Agentes de IA
+## 🤖 AI Agent Orchestration
 
-Este repositorio es construido, refactorizado y auditado continuamente por Inteligencias Artificiales de élite colaborando:
-- **Claude:** Diseña contratos de API, disecciona problemas arquitectónicos y valida las guías estéticas de UX.
-- **Google Antigravity:** Agente ejecutor que automatiza las terminales, ensambla las capas de SQL, corrige bugs en tiempo real, manipula los repositorios de Git e implementa las funciones en TypeScript.
+This repository is continuously built, refactored, and audited by elite AI agents collaborating together:
+- **Claude:** Designs API contracts, dissects architectural problems, and validates UX aesthetic guidelines.
+- **Google Antigravity:** Execution agent that automates terminals, assembles SQL layers, fixes bugs in real time, manages Git repositories, and implements TypeScript features.
 
-> *"La interfaz es importante, pero la mecánica subyacente es sagrada. El borrador de un investigador jamás debe perderse por un fallo de red." — Principios de Diseño de Doctoral Nexus.*
+> *"The interface matters, but the underlying mechanics are sacred. A researcher's draft must never be lost to a network failure." — Doctoral Nexus Design Principles.*
 
 ---
 <div align="center">
