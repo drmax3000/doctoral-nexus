@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_BASE, fetchWithTimeout } from '@/constants/config';
+import KnowledgeGraph from '@/components/knowledge-graph';
 
 const { width } = Dimensions.get('window');
 
@@ -67,6 +68,10 @@ export default function TelemetryDashboard() {
           <Text style={styles.statLabel}>Observaciones</Text>
         </View>
       </View>
+
+      {/* KNOWLEDGE GRAPH */}
+      <Text style={styles.sectionTitle}>Knowledge Graph</Text>
+      <KnowledgeGraph />
 
       {/* SYSTEM HEALTH */}
       <Text style={styles.sectionTitle}>Salud del Motor IA</Text>

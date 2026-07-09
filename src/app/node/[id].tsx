@@ -7,6 +7,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import Markdown from 'react-native-markdown-display';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_BASE, fetchWithTimeout } from '@/constants/config';
+import { RELATION_META } from '@/constants/relations';
 
 /* ═══════════════════════ DESIGN TOKENS · NEXUS DARK ═══════════════════════ */
 const C = {
@@ -40,16 +41,6 @@ const DIMENSIONS = [
 type DimensionKey = typeof DIMENSIONS[number]['key'];
 
 const WIDE_BREAKPOINT = 920;
-
-/* Grafo: tipos de vínculo entre nodos — mapea directo a los dos casos que
-   motivan la funcion (patrones convergentes vs. datos dispares que se
-   capturan en vez de descartarse), mas dos generales. */
-const RELATION_META: Record<string, { label: string; glyph: string; color: string }> = {
-  similar:     { label: 'Similar',     glyph: '≈', color: C.cyan },
-  contradicts: { label: 'Contradicts', glyph: '⚡', color: C.rose },
-  builds_on:   { label: 'Builds on',   glyph: '⤴', color: C.violet },
-  custom:      { label: 'Custom',      glyph: '✦', color: C.textDim },
-};
 
 /* ─────────── Panel de síntesis (compartido por dock móvil y split web) ─────────── */
 function SynthesisPanel({
