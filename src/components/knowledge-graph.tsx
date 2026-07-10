@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, LayoutChangeEvent } from 'react-native';
-import Svg, { Circle, Line } from 'react-native-svg';
+import Svg, { Circle, Line, Rect } from 'react-native-svg';
 import { useRouter } from 'expo-router';
 import { API_BASE, fetchWithTimeout } from '@/constants/config';
 import { RELATION_META } from '@/constants/relations';
+import { VENDOR_META, getContentType, getVendor } from '@/constants/content-types';
 
 const HEIGHT = 380;
 // Paleta chica ciclada por libro — hace visible si un cluster es intra-libro
 // o cruza fuentes distintas, que es justo la pregunta que motiva el grafo.
 const BOOK_PALETTE = ['#A78BFA', '#67E8F9', '#34D399', '#FBBF24', '#FB7185', '#60A5FA'];
 
-interface GraphNode { id: string; title: string; author?: string; }
+interface GraphNode {
+  id: string; title: string; author?: string;
+  dimension?: string; enfoque?: string; contentType?: string; vendor?: string;
+}
 interface GraphEdge { id: string; sourceNodeId: string; targetNodeId: string; type: string; }
 interface Point { x: number; y: number; vx: number; vy: number; }
 
@@ -92,12 +96,20 @@ export default function KnowledgeGraph() {
       .finally(() => setLoading(false));
   }, []);
 
+  /* Doble codificación: los nodos doctorales conservan color por libro; los
+     de certificación se leen por FORMA (cuadrado vs. círculo) y color por
+     vendor — el cluster cert es reconocible aunque comparta paleta. */
   const bookColor = useMemo(() => {
-    const titles = [...new Set(nodes.map(n => n.title))];
+    const titles = [...new Set(nodes.filter(n => getContentType(n) === 'doctoral').map(n => n.title))];
     const map: Record<string, string> = {};
     titles.forEach((t, i) => { map[t] = BOOK_PALETTE[i % BOOK_PALETTE.length]; });
     return map;
   }, [nodes]);
+
+  const certVendors = useMemo(
+    () => [...new Set(nodes.filter(n => getContentType(n) === 'certification').map(getVendor).filter(Boolean))],
+    [nodes],
+  ) as (keyof typeof VENDOR_META)[];
 
   const layout = useMemo(() => {
     if (!width || nodes.length === 0) return null;
@@ -144,6 +156,18 @@ export default function KnowledgeGraph() {
           {nodes.map(n => {
             const p = layout.get(n.id);
             if (!p) return null;
+            if (getContentType(n) === 'certification') {
+              const vendor = getVendor(n);
+              return (
+                <Rect
+                  key={n.id}
+                  x={p.x - 6.5} y={p.y - 6.5} width={13} height={13} rx={3}
+                  fill={vendor ? VENDOR_META[vendor].color : '#F59E0B'}
+                  stroke="#05060E" strokeWidth={1.5}
+                  onPress={() => router.push(`/node/${n.id}`)}
+                />
+              );
+            }
             return (
               <Circle
                 key={n.id}
@@ -163,6 +187,12 @@ export default function KnowledgeGraph() {
             <View key={title} style={styles.legendItem}>
               <View style={[styles.legendDot, { backgroundColor: color }]} />
               <Text style={styles.legendLabel} numberOfLines={1}>{title}</Text>
+            </View>
+          ))}
+          {certVendors.map(vendor => (
+            <View key={vendor} style={styles.legendItem}>
+              <View style={[styles.legendSquare, { backgroundColor: VENDOR_META[vendor].color }]} />
+              <Text style={styles.legendLabel} numberOfLines={1}>{VENDOR_META[vendor].label} · cert</Text>
             </View>
           ))}
         </View>
@@ -190,5 +220,6 @@ const styles = StyleSheet.create({
   },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6, maxWidth: 160 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendSquare: { width: 8, height: 8, borderRadius: 2 },
   legendLabel: { color: '#94a3b8', fontSize: 11, fontWeight: '600' },
 });

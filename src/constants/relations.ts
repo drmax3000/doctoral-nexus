@@ -7,4 +7,8 @@ export const RELATION_META: Record<string, { label: string; glyph: string; color
   contradicts: { label: 'Contradicts', glyph: '⚡', color: '#FB7185' },
   builds_on:   { label: 'Builds on',   glyph: '⤴', color: '#A78BFA' },
   custom:      { label: 'Custom',      glyph: '✦', color: '#8A94AD' },
+  // Vínculos del modo certificación (contrato extendido /graph — G5):
+  confusable_with: { label: 'Confusable with', glyph: '⇄', color: '#FF5C77' },
+  exam_related:    { label: 'Exam related',    glyph: '◆', color: '#FFD166' },
+  cites:           { label: 'Cites',           glyph: '❝', color: '#C4B5FD' },
 };

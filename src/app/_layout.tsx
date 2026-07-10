@@ -29,12 +29,19 @@ export default function RootLayout() {
             tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>⌂</Text>
           }} 
         />
-        <Tabs.Screen 
-          name="observations" 
-          options={{ 
+        <Tabs.Screen
+          name="observations"
+          options={{
             title: 'Synthesis',
             tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>◈</Text>
-          }} 
+          }}
+        />
+        <Tabs.Screen
+          name="review"
+          options={{
+            title: 'Review',
+            tabBarIcon: ({ color }) => <Text style={{ color, fontSize: 18 }}>◇</Text>
+          }}
         />
         <Tabs.Screen 
           name="node/[id]" 

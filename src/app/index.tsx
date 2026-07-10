@@ -11,6 +11,11 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 import { API_BASE, fetchWithTimeout } from '@/constants/config';
+import { ContentBadges } from '@/components/content-badges';
+import {
+  CONTENT_TYPE_META, VENDOR_META, getContentType, getVendor,
+  type ContentType, type Vendor,
+} from '@/constants/content-types';
 
 /* ═══════════════════════ DESIGN TOKENS · NEXUS DARK ═══════════════════════ */
 const C = {
@@ -48,6 +53,11 @@ interface DocumentNode {
   traceId: string;
   lastAgentId: string;
   version: number;
+  // Campos del contrato extendido (G2); mientras llegan, la UI los deriva
+  // de dimension/enfoque vía @/constants/content-types.
+  dimension?: string;
+  contentType?: string;
+  vendor?: string;
 }
 
 /* ─────────────── Micro-interacción: tarjeta con escala al presionar ─────────────── */
@@ -72,6 +82,7 @@ function NodeCard({ item, onPress }: { item: DocumentNode; onPress: () => void }
             <Text style={styles.nodeEyebrow} numberOfLines={1}>
               {item.capitulo ? item.capitulo.toUpperCase() : 'RAW EXTRACT'}
             </Text>
+            <ContentBadges node={item} />
             <View style={styles.confidenceBadge}>
               <View style={styles.confidenceDot} />
               <Text style={styles.confidenceText}>{(item.confidence * 100).toFixed(0)}%</Text>
@@ -113,6 +124,8 @@ export default function DoctoralNexusCore() {
   const [networkError, setNetworkError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
+  const [typeFilter, setTypeFilter] = useState<ContentType | null>(null);
+  const [vendorFilter, setVendorFilter] = useState<Vendor | null>(null);
 
 
   const loadArchitecture = async (isRefresh = false) => {
@@ -146,7 +159,17 @@ export default function DoctoralNexusCore() {
     loadArchitecture();
   }, []);
 
+  /* Los filtros por tipo/vendor solo existen en pantalla cuando el KB tiene
+     ambos mundos; con una biblioteca 100% doctoral la UI queda como siempre. */
+  const hasCertContent = useMemo(() => nodes.some(n => getContentType(n) === 'certification'), [nodes]);
+  const availableVendors = useMemo(
+    () => [...new Set(nodes.map(getVendor).filter(Boolean))] as Vendor[],
+    [nodes],
+  );
+
   const filteredNodes = nodes.filter(node => {
+    if (typeFilter && getContentType(node) !== typeFilter) return false;
+    if (vendorFilter && getVendor(node) !== vendorFilter) return false;
     if (!searchQuery) return true;
     const query = searchQuery.toLowerCase();
     return (
@@ -238,6 +261,51 @@ export default function DoctoralNexusCore() {
             </Pressable>
           )}
         </View>
+
+        {hasCertContent && (
+          <View style={styles.filterRow}>
+            {(['doctoral', 'certification'] as ContentType[]).map(type => {
+              const active = typeFilter === type;
+              const meta = CONTENT_TYPE_META[type];
+              return (
+                <Pressable
+                  key={type}
+                  onPress={() => {
+                    setTypeFilter(active ? null : type);
+                    if (type !== 'certification') setVendorFilter(null);
+                  }}
+                  style={[
+                    styles.filterChip,
+                    active && { borderColor: meta.color, backgroundColor: meta.bg },
+                  ]}
+                >
+                  <Text style={[styles.filterChipText, active && { color: meta.color }]}>
+                    {meta.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+            {typeFilter === 'certification' && availableVendors.length > 1 && (
+              <View style={styles.filterDivider} />
+            )}
+            {typeFilter === 'certification' && availableVendors.length > 1 && availableVendors.map(vendor => {
+              const active = vendorFilter === vendor;
+              const meta = VENDOR_META[vendor];
+              return (
+                <Pressable
+                  key={vendor}
+                  onPress={() => setVendorFilter(active ? null : vendor)}
+                  style={[styles.filterChip, active && { borderColor: meta.color }]}
+                >
+                  <View style={[styles.filterVendorDot, { backgroundColor: meta.color }]} />
+                  <Text style={[styles.filterChipText, active && { color: C.text }]}>
+                    {meta.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
       </View>
 
       {networkError && (
@@ -332,6 +400,18 @@ const styles = StyleSheet.create({
     fontSize: 15, fontWeight: '500',
   },
   searchClear: { color: C.textFaint, fontSize: 13, fontWeight: '800', padding: 4 },
+
+  /* Chips de filtro tipo/vendor: mismo lenguaje glass que el buscador. */
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 14 },
+  filterChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: C.surface,
+    borderWidth: 1, borderColor: C.line,
+    borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  filterChipText: { color: C.textDim, fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
+  filterVendorDot: { width: 6, height: 6, borderRadius: 3 },
+  filterDivider: { width: 1, height: 14, backgroundColor: C.line, marginHorizontal: 2 },
 
   errorCard: {
     marginHorizontal: 24, marginBottom: 16,

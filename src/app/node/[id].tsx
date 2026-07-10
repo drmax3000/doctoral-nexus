@@ -8,6 +8,9 @@ import Markdown from 'react-native-markdown-display';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_BASE, fetchWithTimeout } from '@/constants/config';
 import { RELATION_META } from '@/constants/relations';
+import { ContentBadges } from '@/components/content-badges';
+import { getContentType } from '@/constants/content-types';
+import { ExamTrapsCard, ReviewDeck, getExamTraps, getQuizItems } from '@/components/cert-review';
 
 /* ═══════════════════════ DESIGN TOKENS · NEXUS DARK ═══════════════════════ */
 const C = {
@@ -445,6 +448,10 @@ export default function NodeDetailScreen() {
     }
   };
 
+  const isCert = getContentType(node) === 'certification';
+  const examTraps = isCert ? getExamTraps(node) : '';
+  const quizItems = isCert ? getQuizItems(node) : [];
+
   const readingContent = (
     <ScrollView
       contentContainerStyle={[
@@ -465,15 +472,20 @@ export default function NodeDetailScreen() {
         </Text>
         <Text style={styles.title}>{node.title}</Text>
         <View style={styles.metaRow}>
+          <ContentBadges node={node} />
           <Text style={styles.metaText}>{node.author || 'Unknown author'}</Text>
           {node.tema && <View style={styles.metaDivider} />}
           {node.tema && <Text style={styles.metaText}>{node.tema}</Text>}
           {node.enfoque && <View style={styles.metaDivider} />}
           {node.enfoque && <Text style={styles.metaText}>{node.enfoque}</Text>}
         </View>
+        {/* Repaso: las trampas van arriba, no enterradas en la sección 4. */}
+        {isCert && <ExamTrapsCard traps={examTraps} />}
       </View>
 
       <Markdown style={markdownStyles}>{node.content || ''}</Markdown>
+
+      {isCert && <ReviewDeck nodeId={node.id} quiz={quizItems} />}
 
       <AiSuggestionsCard
         suggestions={suggestions}
