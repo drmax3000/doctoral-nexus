@@ -80,6 +80,19 @@ function NodeCard({ item, onPress }: { item: DocumentNode; onPress: () => void }
             {item.enfoque ? `  ·  ${item.enfoque}` : ''}
           </Text>
 
+          {/* Preview de repaso (G10): la tarjeta cert adelanta la trampa nº1 y
+              cuántas preguntas esperan — doctoral no cambia. */}
+          {item.reviewSummary && (
+            <View style={styles.reviewPreview}>
+              {!!item.reviewSummary.topTrap && (
+                <Text style={styles.reviewTrap} numberOfLines={2}>⚠ {item.reviewSummary.topTrap}</Text>
+              )}
+              {(item.reviewSummary.quizCount ?? 0) > 0 && (
+                <Text style={styles.reviewQuizCount}>◇ {item.reviewSummary.quizCount} self-check questions</Text>
+              )}
+            </View>
+          )}
+
           <View style={styles.nodeFooter}>
             <View style={styles.taxonomyContainer}>
               {item.tema && (
@@ -474,6 +487,14 @@ const styles = StyleSheet.create({
     lineHeight: 29, marginBottom: 8,
   },
   nodeByline: { color: C.textDim, fontSize: 13, fontWeight: '600', marginBottom: 16 },
+
+  /* Preview de repaso en tarjetas de certificación. */
+  reviewPreview: {
+    borderLeftWidth: 2, borderLeftColor: 'rgba(245, 158, 11, 0.5)',
+    paddingLeft: 12, marginTop: -6, marginBottom: 16, gap: 4,
+  },
+  reviewTrap: { color: '#FDE68A', fontSize: 12, lineHeight: 18 },
+  reviewQuizCount: { color: '#F59E0B', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
 
   nodeFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   taxonomyContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, flex: 1 },

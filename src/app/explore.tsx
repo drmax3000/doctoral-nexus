@@ -3,6 +3,7 @@ import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Dimensions } fro
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_BASE, fetchWithTimeout } from '@/constants/config';
 import KnowledgeGraph from '@/components/knowledge-graph';
+import { CONTENT_TYPE_META, VENDOR_META, type ContentType, type Vendor } from '@/constants/content-types';
 
 const { width } = Dimensions.get('window');
 
@@ -105,6 +106,51 @@ export default function TelemetryDashboard() {
           </View>
         );
       })}
+
+      {/* CORPUS: doctoral vs certificación por vendor (contrato G9; se oculta
+          solo si el backend aún no expone byContentType) */}
+      {data.nodes.byContentType && data.nodes.byContentType.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>Corpus</Text>
+          {data.nodes.byContentType.map((item: any, index: number) => {
+            const meta = CONTENT_TYPE_META[item.contentType as ContentType];
+            const percentage = Math.min((item.count / data.nodes.total) * 100, 100);
+            return (
+              <View key={`ct-${index}`} style={styles.barContainer}>
+                <View style={styles.barHeader}>
+                  <Text style={styles.barTitle}>{meta?.label ?? item.contentType}</Text>
+                  <Text style={styles.barCount}>{item.count} nodos</Text>
+                </View>
+                <View style={styles.barTrack}>
+                  <View style={[styles.barFill, { width: `${percentage}%`, backgroundColor: meta?.color ?? '#8A94AD' }]} />
+                </View>
+              </View>
+            );
+          })}
+          {data.nodes.byVendor && data.nodes.byVendor.map((item: any, index: number) => {
+            const meta = VENDOR_META[item.vendor as Vendor];
+            const certTotal = data.nodes.byContentType
+              .find((c: any) => c.contentType === 'certification')?.count ?? data.nodes.total;
+            const percentage = Math.min((item.count / Math.max(certTotal, 1)) * 100, 100);
+            return (
+              <View key={`vd-${index}`} style={styles.barContainer}>
+                <View style={styles.barHeader}>
+                  <Text style={styles.barTitle}>{meta?.label ?? item.vendor}</Text>
+                  <Text style={styles.barCount}>{item.count} temas</Text>
+                </View>
+                <View style={styles.barTrack}>
+                  <View style={[styles.barFill, { width: `${percentage}%`, backgroundColor: meta?.color ?? '#8A94AD' }]} />
+                </View>
+              </View>
+            );
+          })}
+          {data.certification && data.certification.quizItemsTotal > 0 && (
+            <Text style={styles.certProgress}>
+              ◇ {data.certification.reviewedCount} temas repasados · {data.certification.quizItemsTotal} preguntas de autoevaluación en el corpus
+            </Text>
+          )}
+        </>
+      )}
 
       {/* OBSERVATION DIMENSIONS */}
       <Text style={styles.sectionTitle}>Distribución de Observaciones</Text>
@@ -256,5 +302,13 @@ const styles = StyleSheet.create({
   barFill: {
     height: '100%',
     borderRadius: 4,
+  },
+  certProgress: {
+    color: '#f59e0b',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 4,
+    marginBottom: 8,
+    lineHeight: 18,
   }
 });
