@@ -5,16 +5,14 @@ import { useRouter } from 'expo-router';
 import { API_BASE, fetchWithTimeout } from '@/constants/config';
 import { RELATION_META } from '@/constants/relations';
 import { VENDOR_META, getContentType, getVendor } from '@/constants/content-types';
+import type { KnowledgeNode } from '@/types/nexus';
 
 const HEIGHT = 380;
 // Paleta chica ciclada por libro — hace visible si un cluster es intra-libro
 // o cruza fuentes distintas, que es justo la pregunta que motiva el grafo.
 const BOOK_PALETTE = ['#A78BFA', '#67E8F9', '#34D399', '#FBBF24', '#FB7185', '#60A5FA'];
 
-interface GraphNode {
-  id: string; title: string; author?: string;
-  dimension?: string; enfoque?: string; contentType?: string; vendor?: string;
-}
+type GraphNode = KnowledgeNode;
 interface GraphEdge { id: string; sourceNodeId: string; targetNodeId: string; type: string; }
 interface Point { x: number; y: number; vx: number; vy: number; }
 

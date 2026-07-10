@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { API_BASE, fetchWithTimeout } from '@/constants/config';
 import { RELATION_META } from '@/constants/relations';
 import { ContentBadges } from '@/components/content-badges';
-import { getContentType } from '@/constants/content-types';
+import { CONTENT_COPY, getContentType } from '@/constants/content-types';
 import { ExamTrapsCard, ReviewDeck, getExamTraps, getQuizItems } from '@/components/cert-review';
 
 /* ═══════════════════════ DESIGN TOKENS · NEXUS DARK ═══════════════════════ */
@@ -57,6 +57,7 @@ function SynthesisPanel({
   onSave: () => void;
 }) {
   const canSave = observation.trim().length > 0 && dimension !== null;
+  const copy = CONTENT_COPY[getContentType(node)];
 
   return (
     <View>
@@ -71,7 +72,7 @@ function SynthesisPanel({
       <TextInput
         style={styles.inputArea}
         multiline
-        placeholder="What does this text prove for your thesis?"
+        placeholder={copy.synthPlaceholder}
         placeholderTextColor={C.textFaint}
         value={observation}
         onChangeText={setObservation}
@@ -113,21 +114,21 @@ function SynthesisPanel({
 }
 
 function AiSuggestionsCard({
-  suggestions, onSelect, linkedIds, onConnect,
+  suggestions, onSelect, linkedIds, onConnect, title, subtitle,
 }: {
   suggestions: any[];
   onSelect: (id: string) => void;
   linkedIds: Set<string>;
   onConnect: (id: string) => void;
+  title: string;
+  subtitle: string;
 }) {
   if (!suggestions || suggestions.length === 0) return null;
 
   return (
     <View style={styles.suggestionsContainer}>
-      <Text style={styles.suggestionsTitle}>✧ AI KNOWLEDGE CONNECTIONS</Text>
-      <Text style={styles.suggestionsSubtitle}>
-        Based on the current theoretical framework, consider exploring:
-      </Text>
+      <Text style={styles.suggestionsTitle}>{title}</Text>
+      <Text style={styles.suggestionsSubtitle}>{subtitle}</Text>
       {suggestions.map((s, idx) => {
         const linked = linkedIds.has(s.id);
         return (
@@ -451,6 +452,7 @@ export default function NodeDetailScreen() {
   const isCert = getContentType(node) === 'certification';
   const examTraps = isCert ? getExamTraps(node) : '';
   const quizItems = isCert ? getQuizItems(node) : [];
+  const copy = CONTENT_COPY[isCert ? 'certification' : 'doctoral'];
 
   const readingContent = (
     <ScrollView
@@ -492,6 +494,8 @@ export default function NodeDetailScreen() {
         onSelect={(suggestedId) => router.push(`/node/${suggestedId}`)}
         linkedIds={linkedIds}
         onConnect={(targetId) => handleConnect(targetId, 'similar')}
+        title={copy.suggestionsTitle}
+        subtitle={copy.suggestionsSubtitle}
       />
 
       <RelationshipsCard
@@ -531,7 +535,7 @@ export default function NodeDetailScreen() {
         <View style={styles.splitRow}>
           <View style={styles.splitReading}>{readingContent}</View>
           <View style={styles.splitPanel}>
-            <Text style={styles.panelTitle}>Synthesis</Text>
+            <Text style={styles.panelTitle}>{copy.panelTitle}</Text>
             {saved
               ? <Text style={styles.savedText}>✓ Insight committed</Text>
               : (
@@ -553,7 +557,7 @@ export default function NodeDetailScreen() {
             {dockOpen ? (
               <View style={styles.dockPanel}>
                 <View style={styles.dockHeader}>
-                  <Text style={styles.panelTitle}>Synthesis</Text>
+                  <Text style={styles.panelTitle}>{copy.panelTitle}</Text>
                   <Pressable onPress={() => setDockOpen(false)} hitSlop={12}>
                     <Text style={styles.dockClose}>✕</Text>
                   </Pressable>
@@ -575,7 +579,7 @@ export default function NodeDetailScreen() {
                 onPress={() => setDockOpen(true)}
               >
                 <Text style={styles.dockPillGlyph}>✦</Text>
-                <Text style={styles.dockPillText}>Synthesize this chapter</Text>
+                <Text style={styles.dockPillText}>{copy.dockPill}</Text>
                 {observation.length > 0 && <View style={styles.draftDot} />}
               </Pressable>
             )}

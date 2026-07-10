@@ -40,25 +40,9 @@ const SERIF = Platform.select({
   default: 'Georgia, "Times New Roman", serif',
 });
 
-interface DocumentNode {
-  id: string;
-  title: string;
-  status: 'offline_ready' | 'processing' | 'cloud_sync' | 'error';
-  confidence: number;
-  author?: string;
-  tema?: string;
-  capitulo?: string;
-  enfoque?: string;
-  content?: string;
-  traceId: string;
-  lastAgentId: string;
-  version: number;
-  // Campos del contrato extendido (G2); mientras llegan, la UI los deriva
-  // de dimension/enfoque vía @/constants/content-types.
-  dimension?: string;
-  contentType?: string;
-  vendor?: string;
-}
+import type { KnowledgeNode } from '@/types/nexus';
+
+type DocumentNode = KnowledgeNode;
 
 /* ─────────────── Micro-interacción: tarjeta con escala al presionar ─────────────── */
 function NodeCard({ item, onPress }: { item: DocumentNode; onPress: () => void }) {
@@ -85,7 +69,7 @@ function NodeCard({ item, onPress }: { item: DocumentNode; onPress: () => void }
             <ContentBadges node={item} />
             <View style={styles.confidenceBadge}>
               <View style={styles.confidenceDot} />
-              <Text style={styles.confidenceText}>{(item.confidence * 100).toFixed(0)}%</Text>
+              <Text style={styles.confidenceText}>{((item.confidence ?? 0) * 100).toFixed(0)}%</Text>
             </View>
           </View>
 
@@ -104,7 +88,7 @@ function NodeCard({ item, onPress }: { item: DocumentNode; onPress: () => void }
                 </View>
               )}
               <View style={[styles.taxonomyTag, styles.versionTag]}>
-                <Text style={[styles.taxonomyText, styles.versionText]}>v{item.version}</Text>
+                <Text style={[styles.taxonomyText, styles.versionText]}>v{item.version ?? 1}</Text>
               </View>
             </View>
             <Text style={styles.readGlyph}>⟶</Text>

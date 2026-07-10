@@ -3,6 +3,7 @@ import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Markdown from 'react-native-markdown-display';
 
 import { API_BASE, fetchWithTimeout } from '@/constants/config';
+import type { QuizItem } from '@/types/nexus';
 
 /* Secciones de repaso para nodos de certificación: bloque destacado de
    "Trampas Comunes del Examen" + ReviewDeck de Autoevaluación. Prefieren los
@@ -10,11 +11,7 @@ import { API_BASE, fetchWithTimeout } from '@/constants/config';
    se extraen del markdown completo que /nodes/{id} ya sirve hoy — misma
    estrategia dual que content-types.ts, la UI no espera al backend. */
 
-export interface QuizItem {
-  id: string;
-  question: string;
-  answer: string;
-}
+export type { QuizItem };
 
 function extractSection(content: string, headingKeyword: string): string {
   const lines = content.split('\n');

@@ -9,6 +9,7 @@ import { useRouter } from 'expo-router';
 import { API_BASE, fetchWithTimeout } from '@/constants/config';
 import { ContentBadges } from '@/components/content-badges';
 import { VENDOR_META, getContentType, getVendor, type Vendor } from '@/constants/content-types';
+import type { KnowledgeNode } from '@/types/nexus';
 
 /* ═══════════════════════ DESIGN TOKENS · NEXUS DARK ═══════════════════════ */
 const C = {
@@ -28,17 +29,7 @@ const SERIF = Platform.select({
   default: 'Georgia, "Times New Roman", serif',
 });
 
-interface QueueNode {
-  id: string;
-  title: string;
-  author?: string;
-  capitulo?: string;
-  enfoque?: string;
-  dimension?: string;
-  contentType?: string;
-  vendor?: string;
-  lastReviewed?: string | null;
-}
+type QueueNode = KnowledgeNode;
 
 export default function ReviewQueueScreen() {
   const insets = useSafeAreaInsets();

@@ -18,6 +18,32 @@ export const CONTENT_TYPE_META: Record<ContentType, { label: string; color: stri
   certification: { label: 'CERT',     color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)' },
 };
 
+/* Copy por tipo (hallazgo Codex #9): la tarea mental de un capítulo doctoral
+   es probar una tesis; la de un tema de certificación es recordar límites y
+   elegir servicio. Los labels deben pedir la tarea correcta. */
+export const CONTENT_COPY: Record<ContentType, {
+  panelTitle: string;
+  synthPlaceholder: string;
+  dockPill: string;
+  suggestionsTitle: string;
+  suggestionsSubtitle: string;
+}> = {
+  doctoral: {
+    panelTitle: 'Synthesis',
+    synthPlaceholder: 'What does this text prove for your thesis?',
+    dockPill: 'Synthesize this chapter',
+    suggestionsTitle: '✧ AI KNOWLEDGE CONNECTIONS',
+    suggestionsSubtitle: 'Based on the current theoretical framework, consider exploring:',
+  },
+  certification: {
+    panelTitle: 'Exam Notes',
+    synthPlaceholder: 'What do you need to remember for the exam?',
+    dockPill: 'Note an exam insight',
+    suggestionsTitle: '✧ RELATED EXAM TOPICS',
+    suggestionsSubtitle: 'Services commonly tested together or confused with this one:',
+  },
+};
+
 type NodeLike = {
   contentType?: string;
   vendor?: string;
