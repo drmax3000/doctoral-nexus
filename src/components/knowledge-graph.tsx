@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { API_BASE, fetchWithTimeout } from '@/constants/config';
 import { RELATION_META } from '@/constants/relations';
 import { VENDOR_META, getContentType, getVendor } from '@/constants/content-types';
+import { ContentBadges } from '@/components/content-badges';
 import type { KnowledgeNode } from '@/types/nexus';
 
 const AnimatedG = Animated.createAnimatedComponent(G);
@@ -174,6 +175,11 @@ export default function KnowledgeGraph() {
   const toggleGroup = (value: string) =>
     setHighlight(current => (current?.kind === 'group' && current.value === value ? null : { kind: 'group', value }));
 
+  const selectedNode = highlight?.kind === 'node' ? nodesById[highlight.value] : null;
+  const selectedTitle = selectedNode
+    ? (getContentType(selectedNode) === 'certification' ? (selectedNode.capitulo || selectedNode.title) : selectedNode.title)
+    : '';
+
   return (
     <View style={styles.card} onLayout={onLayout}>
       {loading ? (
@@ -253,6 +259,19 @@ export default function KnowledgeGraph() {
         </Svg>
       ) : null}
 
+      {/* Tarjeta de info: antes tocar un nodo solo resaltaba sus conexiones
+          sin mostrar de que nodo se trataba — ahora aparece titulo + tipo. */}
+      {selectedNode && (
+        <Pressable
+          style={styles.infoCard}
+          onPress={() => router.push(`/node/${selectedNode.id}`)}
+        >
+          <ContentBadges node={selectedNode} showDoctoral />
+          <Text style={styles.infoTitle} numberOfLines={2}>{selectedTitle}</Text>
+          <Text style={styles.infoHint}>Tap to open this chapter</Text>
+        </Pressable>
+      )}
+
       {nodes.length > 0 && (
         <View style={styles.legend}>
           {Object.entries(bookColor).map(([title, color]) => {
@@ -313,6 +332,14 @@ const styles = StyleSheet.create({
   emptyGlyph: { color: '#A78BFA', fontSize: 28, marginBottom: 8, opacity: 0.7 },
   emptyText: { color: '#e2e8f0', fontSize: 15, fontWeight: '700', marginBottom: 4, textAlign: 'center' },
   emptySub: { color: '#64748b', fontSize: 13, textAlign: 'center', lineHeight: 19 },
+  infoCard: {
+    marginHorizontal: 16, marginTop: 4, marginBottom: 12,
+    backgroundColor: 'rgba(167, 139, 250, 0.06)',
+    borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.3)',
+    borderRadius: 14, padding: 14, gap: 6,
+  },
+  infoTitle: { color: '#F4F6FB', fontSize: 15, fontWeight: '700', lineHeight: 21 },
+  infoHint: { color: '#8A94AD', fontSize: 11, fontWeight: '600' },
   legend: {
     flexDirection: 'row', flexWrap: 'wrap', gap: 12,
     paddingHorizontal: 16, paddingBottom: 16, paddingTop: 4,
