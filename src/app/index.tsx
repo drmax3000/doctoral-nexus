@@ -69,16 +69,23 @@ function NodeCard({ item, onPress }: { item: DocumentNode; onPress: () => void }
             <ContentBadges node={item} />
             <View style={styles.confidenceBadge}>
               <View style={styles.confidenceDot} />
-              <Text style={styles.confidenceText}>{((item.confidence ?? 0) * 100).toFixed(0)}%</Text>
+              <Text style={styles.confidenceText}>{(item.confidence ?? 0).toFixed(0)}%</Text>
             </View>
           </View>
 
-          <Text style={styles.nodeTitle} numberOfLines={3}>{item.title}</Text>
-
-          <Text style={styles.nodeByline} numberOfLines={1}>
-            {item.author || 'Unknown author'}
-            {item.enfoque ? `  ·  ${item.enfoque}` : ''}
+          {/* Certificación: item.title es solo el slug del vendor ("aws"),
+              redundante con el badge — capitulo ya es un titulo legible
+              ("Chapter 1: ...") y hace de titulo de tarjeta en su lugar. */}
+          <Text style={styles.nodeTitle} numberOfLines={3}>
+            {getContentType(item) === 'certification' ? (item.capitulo || item.title) : item.title}
           </Text>
+
+          {getContentType(item) !== 'certification' && (
+            <Text style={styles.nodeByline} numberOfLines={1}>
+              {item.author || 'Unknown author'}
+              {item.enfoque ? `  ·  ${item.enfoque}` : ''}
+            </Text>
+          )}
 
           {/* Preview de repaso (G10): la tarjeta cert adelanta la trampa nº1 y
               cuántas preguntas esperan — doctoral no cambia. */}
@@ -95,7 +102,10 @@ function NodeCard({ item, onPress }: { item: DocumentNode; onPress: () => void }
 
           <View style={styles.nodeFooter}>
             <View style={styles.taxonomyContainer}>
-              {item.tema && (
+              {/* tema == capitulo para certificacion (ya es el titulo de la
+                  tarjeta arriba) -- mostrarlo aqui tambien seria la tercera
+                  repeticion del mismo dato. */}
+              {item.tema && getContentType(item) !== 'certification' && (
                 <View style={styles.taxonomyTag}>
                   <Text style={styles.taxonomyText}>{item.tema}</Text>
                 </View>

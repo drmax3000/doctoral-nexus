@@ -10,6 +10,14 @@ import { API_BASE, fetchWithTimeout } from '@/constants/config';
 import { RELATION_META } from '@/constants/relations';
 import { ContentBadges } from '@/components/content-badges';
 import { CONTENT_COPY, getContentType } from '@/constants/content-types';
+
+/* Certificación: node.title es solo el slug del vendor ("aws"); capitulo ya
+   es un titulo legible ("Chapter 1: ..."). Usado en las tarjetas de
+   sugerencias/enlaces, no solo en la tarjeta principal — el mismo bug
+   aparecía tres veces en la pantalla. */
+function displayTitle(n: any): string {
+  return getContentType(n) === 'certification' ? (n.capitulo || n.title) : n.title;
+}
 import { ExamTrapsCard, ReviewDeck, getExamTraps, getQuizItems } from '@/components/cert-review';
 
 /* ═══════════════════════ DESIGN TOKENS · NEXUS DARK ═══════════════════════ */
@@ -138,11 +146,14 @@ function AiSuggestionsCard({
             onPress={() => onSelect(s.id)}
           >
             <View style={styles.sugHeader}>
-              <Text style={styles.sugAuthor}>{typeof s.author === 'object' ? JSON.stringify(s.author) : (s.author || 'Unknown')} {s.capitulo ? `· ${typeof s.capitulo === 'object' ? JSON.stringify(s.capitulo) : s.capitulo}` : ''}</Text>
+              <Text style={styles.sugAuthor}>
+                {typeof s.author === 'object' ? JSON.stringify(s.author) : (s.author || 'Unknown')}
+                {getContentType(s) !== 'certification' && s.capitulo ? ` · ${typeof s.capitulo === 'object' ? JSON.stringify(s.capitulo) : s.capitulo}` : ''}
+              </Text>
             </View>
-            <Text style={styles.sugTitle} numberOfLines={2}>{typeof s.title === 'object' ? JSON.stringify(s.title) : s.title}</Text>
+            <Text style={styles.sugTitle} numberOfLines={2}>{typeof displayTitle(s) === 'object' ? JSON.stringify(displayTitle(s)) : displayTitle(s)}</Text>
             <View style={styles.metaRow}>
-              {s.tema && <Text style={styles.sugMeta}>{typeof s.tema === 'object' ? JSON.stringify(s.tema) : s.tema}</Text>}
+              {s.tema && getContentType(s) !== 'certification' && <Text style={styles.sugMeta}>{typeof s.tema === 'object' ? JSON.stringify(s.tema) : s.tema}</Text>}
               {s.enfoque && <Text style={styles.sugMeta}> · {typeof s.enfoque === 'object' ? JSON.stringify(s.enfoque) : s.enfoque}</Text>}
             </View>
             <Pressable
@@ -194,9 +205,10 @@ function RelationshipsCard({
                 {meta.glyph} {meta.label}{r.label ? `: ${r.label}` : ''}
               </Text>
             </View>
-            <Text style={styles.sugTitle} numberOfLines={2}>{other.title}</Text>
+            <Text style={styles.sugTitle} numberOfLines={2}>{displayTitle(other)}</Text>
             <Text style={styles.sugAuthor}>
-              {other.author || 'Unknown'}{other.capitulo ? ` · ${other.capitulo}` : ''}
+              {other.author || 'Unknown'}
+              {getContentType(other) !== 'certification' && other.capitulo ? ` · ${other.capitulo}` : ''}
             </Text>
           </Pressable>
         );
@@ -469,18 +481,35 @@ export default function NodeDetailScreen() {
       }}
     >
       <View style={styles.headerBlock}>
-        <Text style={styles.eyebrow}>
-          {(node.capitulo || 'RAW EXTRACT').toUpperCase()}
-        </Text>
-        <Text style={styles.title}>{node.title}</Text>
-        <View style={styles.metaRow}>
-          <ContentBadges node={node} />
-          <Text style={styles.metaText}>{node.author || 'Unknown author'}</Text>
-          {node.tema && <View style={styles.metaDivider} />}
-          {node.tema && <Text style={styles.metaText}>{node.tema}</Text>}
-          {node.enfoque && <View style={styles.metaDivider} />}
-          {node.enfoque && <Text style={styles.metaText}>{node.enfoque}</Text>}
-        </View>
+        {isCert ? (
+          <>
+            {/* Certificación: node.title es solo el slug de la carpeta del
+                vendor ("aws") — mostrarlo como titulo grande es redundante
+                con el badge y no dice nada. capitulo ya es un titulo legible
+                ("Chapter 1: ..."), así que ES el titulo; tema/enfoque/author
+                se eliminan del meta row por ser duplicados del mismo dato. */}
+            <Text style={styles.eyebrow}>{(node.enfoque || 'CERTIFICATION').toUpperCase()}</Text>
+            <Text style={styles.title}>{node.capitulo || node.title}</Text>
+            <View style={styles.metaRow}>
+              <ContentBadges node={node} />
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.eyebrow}>
+              {(node.capitulo || 'RAW EXTRACT').toUpperCase()}
+            </Text>
+            <Text style={styles.title}>{node.title}</Text>
+            <View style={styles.metaRow}>
+              <ContentBadges node={node} />
+              <Text style={styles.metaText}>{node.author || 'Unknown author'}</Text>
+              {node.tema && <View style={styles.metaDivider} />}
+              {node.tema && <Text style={styles.metaText}>{node.tema}</Text>}
+              {node.enfoque && <View style={styles.metaDivider} />}
+              {node.enfoque && <Text style={styles.metaText}>{node.enfoque}</Text>}
+            </View>
+          </>
+        )}
         {/* Repaso: las trampas van arriba, no enterradas en la sección 4. */}
         {isCert && <ExamTrapsCard traps={examTraps} />}
       </View>
