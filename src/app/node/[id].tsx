@@ -530,7 +530,13 @@ export default function NodeDetailScreen() {
         />
       </View>
 
-      {isWide ? (
+      {isCert ? (
+        /* Certificación: sin Synthesis — clasificar un insight en las 4
+           dimensiones epistémicas (THEORETICAL/METHODOLOGICAL/EMPIRICAL/
+           ANALYTICAL) no aplica a repasar para un examen. El ReviewDeck ya
+           dentro de readingContent es el único mecanismo de captura. */
+        readingContent
+      ) : isWide ? (
         /* ── WEB / TABLET: SPLIT VIEW — leer y sintetizar sin cambiar de contexto ── */
         <View style={styles.splitRow}>
           <View style={styles.splitReading}>{readingContent}</View>

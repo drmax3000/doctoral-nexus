@@ -13,10 +13,11 @@ import type { QuizItem } from '@/types/nexus';
 
 export type { QuizItem };
 
-function extractSection(content: string, headingKeyword: string): string {
+function extractSection(content: string, headingKeywords: string[]): string {
   const lines = content.split('\n');
   const start = lines.findIndex(
-    line => line.startsWith('## ') && line.toLowerCase().includes(headingKeyword.toLowerCase()),
+    line => line.startsWith('## ') &&
+      headingKeywords.some(k => line.toLowerCase().includes(k.toLowerCase())),
   );
   if (start === -1) return '';
   let end = lines.length;
@@ -26,16 +27,19 @@ function extractSection(content: string, headingKeyword: string): string {
   return lines.slice(start + 1, end).join('\n').trim();
 }
 
+// Contrato vigente: headers en ingles ("Common Exam Traps" / "Self-Assessment").
+// Se acepta tambien el nombre legacy en espanol para no romper el primer
+// analisis generado antes de este cambio de idioma.
 export function getExamTraps(node: { content?: string; examTraps?: { text: string }[] }): string {
   if (node.examTraps?.length) return node.examTraps.map(t => t.text).join('\n\n');
-  return extractSection(node.content ?? '', 'Trampas Comunes del Examen');
+  return extractSection(node.content ?? '', ['Common Exam Traps', 'Trampas Comunes del Examen']);
 }
 
 const QUIZ_LINE_RE = /^[-*]\s*Q:\s*(.+?)\s+A:\s*(.+)$/;
 
 export function getQuizItems(node: { id?: string; content?: string; quiz?: QuizItem[] }): QuizItem[] {
   if (node.quiz?.length) return node.quiz;
-  const section = extractSection(node.content ?? '', 'Autoevaluación');
+  const section = extractSection(node.content ?? '', ['Self-Assessment', 'Autoevaluación']);
   if (!section) return [];
   const items: QuizItem[] = [];
   for (const line of section.split('\n')) {
@@ -55,7 +59,7 @@ export function ExamTrapsCard({ traps }: { traps: string }) {
   if (!traps) return null;
   return (
     <View style={styles.trapsCard}>
-      <Text style={styles.trapsTitle}>⚠ TRAMPAS COMUNES DEL EXAMEN</Text>
+      <Text style={styles.trapsTitle}>⚠ COMMON EXAM TRAPS</Text>
       <Markdown style={trapsMarkdownStyles}>{traps}</Markdown>
     </View>
   );
@@ -80,7 +84,7 @@ export function ReviewDeck({ nodeId, quiz }: { nodeId: string; quiz: QuizItem[] 
 
   return (
     <View style={styles.deck}>
-      <Text style={styles.deckTitle}>✦ AUTOEVALUACIÓN</Text>
+      <Text style={styles.deckTitle}>✦ SELF-ASSESSMENT</Text>
       <Text style={styles.deckSubtitle}>
         Answer mentally, reveal, then be honest: known, or again?
       </Text>
