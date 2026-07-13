@@ -9,6 +9,8 @@
    ApiObservation.dimension (las 4 dimensiones de observación) vive en
    server/db.d.ts y NO se mezcla con este tipo. */
 
+import type { ContentType } from '@/constants/content-types';
+
 export interface QuizItem {
   id: string;
   question: string;
@@ -32,8 +34,8 @@ export interface KnowledgeNode {
   lastAgentId?: string;
   meals?: { M: string; E: string; A: string; L: string };
 
-  // Contrato extendido — modo certificación:
-  contentType?: 'doctoral' | 'certification';
+  // Contrato extendido — modo certificación / investigador:
+  contentType?: ContentType;
   vendor?: string;
   examTraps?: { section: string; text: string }[];
   quiz?: QuizItem[];

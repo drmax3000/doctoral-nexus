@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo } from 'react';
 import {
   StyleSheet, View, Text, ScrollView, TextInput, Pressable,
-  Platform, useWindowDimensions, KeyboardAvoidingView, Animated, ActivityIndicator
+  Platform, useWindowDimensions, KeyboardAvoidingView, Animated
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Markdown from 'react-native-markdown-display';
@@ -10,6 +10,9 @@ import { API_BASE, fetchWithTimeout } from '@/constants/config';
 import { RELATION_META } from '@/constants/relations';
 import { ContentBadges } from '@/components/content-badges';
 import { CONTENT_COPY, getContentType } from '@/constants/content-types';
+import { Colors, Fonts, type DimensionKey } from '@/constants/theme';
+import { DimensionBadge } from '@/components/ui/dimension-badge';
+import { Loader } from '@/components/ui/loader';
 
 /* Certificación: node.title es solo el slug del vendor ("aws"); capitulo ya
    es un titulo legible ("Chapter 1: ..."). Usado en las tarjetas de
@@ -20,36 +23,7 @@ function displayTitle(n: any): string {
 }
 import { ExamTrapsCard, ReviewDeck, getExamTraps, getQuizItems } from '@/components/cert-review';
 
-/* ═══════════════════════ DESIGN TOKENS · NEXUS DARK ═══════════════════════ */
-const C = {
-  bg: '#05060E',
-  surface: 'rgba(16, 21, 38, 0.72)',
-  dock: 'rgba(13, 17, 32, 0.97)',      // el dock necesita opacidad casi total sobre el texto
-  inputBg: 'rgba(5, 6, 14, 0.65)',
-  line: 'rgba(148, 163, 184, 0.10)',
-  text: '#F4F6FB',
-  textDim: '#8A94AD',
-  textFaint: '#586176',
-  violet: '#A78BFA',
-  violetDeep: '#7C5CE0',
-  cyan: '#67E8F9',
-  rose: '#FB7185',
-};
-
-const SERIF = Platform.select({
-  ios: 'Georgia',
-  android: 'serif',
-  default: 'Georgia, "Times New Roman", serif',
-});
-
-const DIMENSIONS = [
-  { key: 'THEORETICAL',    color: '#A78BFA' },
-  { key: 'METHODOLOGICAL', color: '#67E8F9' },
-  { key: 'EMPIRICAL',      color: '#34D399' },
-  { key: 'ANALYTICAL',     color: '#FBBF24' },
-] as const;
-
-type DimensionKey = typeof DIMENSIONS[number]['key'];
+const DIMENSION_KEYS: DimensionKey[] = ['THEORETICAL', 'METHODOLOGICAL', 'EMPIRICAL', 'ANALYTICAL'];
 
 const WIDE_BREAKPOINT = 920;
 
@@ -81,31 +55,22 @@ function SynthesisPanel({
         style={styles.inputArea}
         multiline
         placeholder={copy.synthPlaceholder}
-        placeholderTextColor={C.textFaint}
+        placeholderTextColor={Colors.dark.textFaint}
         value={observation}
         onChangeText={setObservation}
         textAlignVertical="top"
       />
 
       <View style={styles.dimRow}>
-        {DIMENSIONS.map(dim => {
-          const active = dimension === dim.key;
-          return (
-            <Pressable
-              key={dim.key}
-              style={[
-                styles.dimPill,
-                active && { borderColor: dim.color, backgroundColor: `${dim.color}1F` },
-              ]}
-              onPress={() => setDimension(dim.key)}
-            >
-              <View style={[styles.dimDot, { backgroundColor: dim.color, opacity: active ? 1 : 0.35 }]} />
-              <Text style={[styles.dimPillText, active && { color: dim.color }]}>
-                {dim.key.slice(0, 6)}
-              </Text>
-            </Pressable>
-          );
-        })}
+        {DIMENSION_KEYS.map(key => (
+          <DimensionBadge
+            key={key}
+            dimension={key}
+            variant="picker"
+            selected={dimension === key}
+            onPress={() => setDimension(key)}
+          />
+        ))}
       </View>
 
       <Pressable
@@ -280,7 +245,7 @@ function ConnectPanel({
       <TextInput
         style={styles.connectInput}
         placeholder="Search title, author, topic…"
-        placeholderTextColor={C.textFaint}
+        placeholderTextColor={Colors.dark.textFaint}
         value={query}
         onChangeText={setQuery}
         autoFocus
@@ -415,8 +380,8 @@ export default function NodeDetailScreen() {
 
   if (loadingNode) {
     return (
-      <View style={[styles.errorContainer, { justifyContent: 'center' }]}>
-        <ActivityIndicator size="large" color="#A78BFA" />
+      <View style={styles.errorContainer}>
+        <Loader />
       </View>
     );
   }
@@ -461,10 +426,11 @@ export default function NodeDetailScreen() {
     }
   };
 
-  const isCert = getContentType(node) === 'certification';
+  const contentType = getContentType(node);
+  const isCert = contentType === 'certification';
   const examTraps = isCert ? getExamTraps(node) : '';
   const quizItems = isCert ? getQuizItems(node) : [];
-  const copy = CONTENT_COPY[isCert ? 'certification' : 'doctoral'];
+  const copy = CONTENT_COPY[contentType];
 
   const readingContent = (
     <ScrollView
@@ -627,14 +593,14 @@ export default function NodeDetailScreen() {
 
 /* ═══════════════════════════════ STYLESHEET ═══════════════════════════════ */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
-  errorContainer: { flex: 1, backgroundColor: C.bg, justifyContent: 'center', alignItems: 'center' },
-  errorText: { color: C.rose, fontSize: 16 },
+  container: { flex: 1, backgroundColor: Colors.dark.background },
+  errorContainer: { flex: 1, backgroundColor: Colors.dark.background, justifyContent: 'center', alignItems: 'center' },
+  errorText: { color: Colors.dark.rose, fontSize: 16 },
 
   progressTrack: { height: 2, backgroundColor: 'rgba(148, 163, 184, 0.08)' },
   progressFill: {
     height: 2, width: '100%',
-    backgroundColor: C.violet,
+    backgroundColor: Colors.dark.violet,
     boxShadow: '0px 0px 8px rgba(167, 139, 250, 0.9)',
   },
 
@@ -642,34 +608,34 @@ const styles = StyleSheet.create({
 
   headerBlock: {
     marginBottom: 28,
-    borderBottomWidth: 1, borderBottomColor: C.line,
+    borderBottomWidth: 1, borderBottomColor: Colors.dark.border,
     paddingBottom: 24,
   },
-  eyebrow: { fontSize: 11, fontWeight: '900', color: C.violet, letterSpacing: 3, marginBottom: 10 },
+  eyebrow: { fontSize: 11, fontWeight: '900', color: Colors.dark.violet, letterSpacing: 3, marginBottom: 10 },
   title: {
-    fontSize: 30, color: C.text, fontFamily: SERIF,
+    fontSize: 30, color: Colors.dark.text, fontFamily: Fonts.serif,
     lineHeight: 40, marginBottom: 14, letterSpacing: -0.3,
   },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  metaText: { color: C.textDim, fontSize: 13, fontWeight: '600' },
-  metaDivider: { width: 1, height: 12, backgroundColor: C.line },
+  metaText: { color: Colors.dark.textDim, fontSize: 13, fontWeight: '600' },
+  metaDivider: { width: 1, height: 12, backgroundColor: Colors.dark.border },
 
   /* Split view (web / tablet horizontal). */
   splitRow: { flex: 1, flexDirection: 'row' },
   splitReading: { flex: 1.7, minWidth: 0 },
   splitPanel: {
     flex: 1, maxWidth: 440,
-    borderLeftWidth: 1, borderLeftColor: C.line,
+    borderLeftWidth: 1, borderLeftColor: Colors.dark.border,
     backgroundColor: 'rgba(10, 13, 26, 0.6)',
     padding: 24,
   },
-  panelTitle: { color: C.text, fontSize: 22, fontFamily: SERIF, marginBottom: 14 },
+  panelTitle: { color: Colors.dark.text, fontSize: 22, fontFamily: Fonts.serif, marginBottom: 14 },
 
   /* Synthesis Dock (móvil). */
   dockWrap: { position: 'absolute', left: 16, right: 16, bottom: 0 },
   dockPill: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
-    backgroundColor: C.violetDeep,
+    backgroundColor: Colors.dark.violetDeep,
     borderRadius: 28, paddingVertical: 15,
     borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.6)',
     boxShadow: '0px 10px 30px rgba(124, 92, 224, 0.5)',
@@ -677,56 +643,55 @@ const styles = StyleSheet.create({
   dockPillGlyph: { color: '#FFFFFF', fontSize: 15 },
   dockPillText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800', letterSpacing: 0.5 },
   draftDot: {
-    width: 8, height: 8, borderRadius: 4, backgroundColor: C.cyan,
+    width: 8, height: 8, borderRadius: 4, backgroundColor: Colors.dark.cyan,
     boxShadow: '0px 0px 8px rgba(103, 232, 249, 0.9)',
   },
 
   dockPanel: {
-    backgroundColor: C.dock,
+    backgroundColor: Colors.dark.dock,
     borderRadius: 24,
     borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.25)',
     padding: 20,
     boxShadow: '0px -8px 40px rgba(0, 0, 0, 0.6)',
   },
   dockHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  dockClose: { color: C.textFaint, fontSize: 14, fontWeight: '800', padding: 4 },
+  dockClose: { color: Colors.dark.textFaint, fontSize: 14, fontWeight: '800', padding: 4 },
 
   /* Panel compartido. */
   panelSourceRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  panelGlyph: { color: C.violet, fontSize: 13 },
-  panelSourceText: { color: C.textDim, fontSize: 12, fontWeight: '600', flex: 1 },
+  panelGlyph: { color: Colors.dark.violet, fontSize: 13 },
+  panelSourceText: { color: Colors.dark.textDim, fontSize: 12, fontWeight: '600', flex: 1 },
 
   inputArea: {
-    backgroundColor: C.inputBg,
+    backgroundColor: Colors.dark.inputBg,
     borderRadius: 14,
-    borderWidth: 1, borderColor: C.line,
-    color: C.text,
+    borderWidth: 1, borderColor: Colors.dark.border,
+    color: Colors.dark.text,
     padding: 14,
     minHeight: 110,
     fontSize: 15, lineHeight: 24,
-    fontFamily: SERIF,
+    fontFamily: Fonts.serif,
     marginBottom: 14,
   },
 
   dimRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
   dimPill: {
     flexDirection: 'row', alignItems: 'center', gap: 7,
-    borderWidth: 1, borderColor: C.line, borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.dark.border, borderRadius: 10,
     paddingHorizontal: 11, paddingVertical: 7,
   },
-  dimDot: { width: 6, height: 6, borderRadius: 3 },
-  dimPillText: { color: C.textDim, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
+  dimPillText: { color: Colors.dark.textDim, fontSize: 10, fontWeight: '900', letterSpacing: 1.2 },
 
   saveButton: { borderRadius: 13, paddingVertical: 14, alignItems: 'center', borderWidth: 1 },
   saveButtonEnabled: {
-    backgroundColor: C.violetDeep,
+    backgroundColor: Colors.dark.violetDeep,
     borderColor: 'rgba(167, 139, 250, 0.6)',
     boxShadow: '0px 6px 22px rgba(124, 92, 224, 0.45)',
   },
-  saveButtonDisabled: { backgroundColor: 'transparent', borderColor: C.line },
-  saveButtonText: { color: C.textFaint, fontSize: 12, fontWeight: '900', letterSpacing: 2 },
+  saveButtonDisabled: { backgroundColor: 'transparent', borderColor: Colors.dark.border },
+  saveButtonText: { color: Colors.dark.textFaint, fontSize: 12, fontWeight: '900', letterSpacing: 2 },
 
-  savedText: { color: '#34D399', fontSize: 15, fontWeight: '800', paddingVertical: 24, textAlign: 'center' },
+  savedText: { color: Colors.dark.emerald, fontSize: 15, fontWeight: '800', paddingVertical: 24, textAlign: 'center' },
 
   /* AI Suggestions */
   suggestionsContainer: {
@@ -734,10 +699,10 @@ const styles = StyleSheet.create({
     marginBottom: 40,
     paddingTop: 30,
     borderTopWidth: 1,
-    borderTopColor: C.line,
+    borderTopColor: Colors.dark.border,
   },
-  suggestionsTitle: { color: C.cyan, fontSize: 11, fontWeight: '900', letterSpacing: 3, marginBottom: 6 },
-  suggestionsSubtitle: { color: C.textDim, fontSize: 14, fontFamily: SERIF, marginBottom: 20 },
+  suggestionsTitle: { color: Colors.dark.cyan, fontSize: 11, fontWeight: '900', letterSpacing: 3, marginBottom: 6 },
+  suggestionsSubtitle: { color: Colors.dark.textDim, fontSize: 14, fontFamily: Fonts.serif, marginBottom: 20 },
   suggestionCard: {
     backgroundColor: 'rgba(16, 21, 38, 0.4)',
     borderWidth: 1,
@@ -747,9 +712,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   sugHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  sugAuthor: { color: C.textFaint, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
-  sugTitle: { color: C.text, fontSize: 16, fontFamily: SERIF, lineHeight: 22, marginBottom: 8 },
-  sugMeta: { color: C.violet, fontSize: 12, fontWeight: '600' },
+  sugAuthor: { color: Colors.dark.textFaint, fontSize: 11, fontWeight: '800', textTransform: 'uppercase' },
+  sugTitle: { color: Colors.dark.text, fontSize: 16, fontFamily: Fonts.serif, lineHeight: 22, marginBottom: 8 },
+  sugMeta: { color: Colors.dark.violet, fontSize: 12, fontWeight: '600' },
 
   /* Grafo: boton "Link" en cada sugerencia. */
   linkButton: {
@@ -759,8 +724,8 @@ const styles = StyleSheet.create({
     borderRadius: 9, paddingHorizontal: 12, paddingVertical: 6,
   },
   linkButtonDone: { borderColor: 'rgba(52, 211, 153, 0.4)', backgroundColor: 'rgba(52, 211, 153, 0.08)' },
-  linkButtonText: { color: C.cyan, fontSize: 11, fontWeight: '800' },
-  linkButtonDoneText: { color: '#34D399' },
+  linkButtonText: { color: Colors.dark.cyan, fontSize: 11, fontWeight: '800' },
+  linkButtonDoneText: { color: Colors.dark.emerald },
 
   /* Grafo: badge de tipo de vinculo en "Confirmed Links". */
   relBadge: {
@@ -772,60 +737,60 @@ const styles = StyleSheet.create({
   connectTrigger: {
     alignSelf: 'flex-start',
     marginTop: -8, marginBottom: 40,
-    borderWidth: 1, borderColor: C.line, borderRadius: 12,
+    borderWidth: 1, borderColor: Colors.dark.border, borderRadius: 12,
     paddingHorizontal: 16, paddingVertical: 10,
   },
-  connectTriggerText: { color: C.textDim, fontSize: 13, fontWeight: '700' },
+  connectTriggerText: { color: Colors.dark.textDim, fontSize: 13, fontWeight: '700' },
   connectPanel: {
     marginTop: -8, marginBottom: 40,
-    backgroundColor: C.dock,
+    backgroundColor: Colors.dark.dock,
     borderRadius: 20,
     borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.25)',
     padding: 18,
   },
   connectInput: {
-    backgroundColor: C.inputBg,
+    backgroundColor: Colors.dark.inputBg,
     borderRadius: 12,
-    borderWidth: 1, borderColor: C.line,
-    color: C.text,
+    borderWidth: 1, borderColor: Colors.dark.border,
+    color: Colors.dark.text,
     paddingHorizontal: 14, paddingVertical: 12,
     fontSize: 14,
     marginBottom: 10,
   },
   connectResult: {
-    borderWidth: 1, borderColor: C.line, borderRadius: 10,
+    borderWidth: 1, borderColor: Colors.dark.border, borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 10,
     marginBottom: 8,
   },
-  connectResultTitle: { color: C.text, fontSize: 14, fontFamily: SERIF },
-  connectResultMeta: { color: C.textFaint, fontSize: 11, marginTop: 2 },
-  connectEmpty: { color: C.textFaint, fontSize: 13, textAlign: 'center', paddingVertical: 8 },
+  connectResultTitle: { color: Colors.dark.text, fontSize: 14, fontFamily: Fonts.serif },
+  connectResultMeta: { color: Colors.dark.textFaint, fontSize: 11, marginTop: 2 },
+  connectEmpty: { color: Colors.dark.textFaint, fontSize: 13, textAlign: 'center', paddingVertical: 8 },
 });
 
 /* Lectura profunda: cuerpo serif 17/30 — la decisión tipográfica que separa
    una app de notas de una herramienta de investigación. */
 const markdownStyles = {
-  body: { color: '#E6EAF3', fontSize: 17, lineHeight: 30, fontFamily: SERIF },
-  heading1: { color: '#F4F6FB', fontSize: 26, fontFamily: SERIF, marginTop: 28, marginBottom: 14, lineHeight: 34 },
-  heading2: { color: '#F4F6FB', fontSize: 22, fontFamily: SERIF, marginTop: 24, marginBottom: 12, lineHeight: 30 },
-  heading3: { color: '#F4F6FB', fontSize: 19, fontFamily: SERIF, marginTop: 18, marginBottom: 10 },
+  body: { color: '#E6EAF3', fontSize: 17, lineHeight: 30, fontFamily: Fonts.serif },
+  heading1: { color: Colors.dark.text, fontSize: 26, fontFamily: Fonts.serif, marginTop: 28, marginBottom: 14, lineHeight: 34 },
+  heading2: { color: Colors.dark.text, fontSize: 22, fontFamily: Fonts.serif, marginTop: 24, marginBottom: 12, lineHeight: 30 },
+  heading3: { color: Colors.dark.text, fontSize: 19, fontFamily: Fonts.serif, marginTop: 18, marginBottom: 10 },
   paragraph: { marginBottom: 18 },
   list_item: { marginBottom: 10 },
   strong: { color: '#FFFFFF', fontWeight: '700' as const },
   em: { fontStyle: 'italic' as const, color: '#C7CEDD' },
   blockquote: {
-    borderLeftWidth: 3, borderLeftColor: '#A78BFA', paddingLeft: 18,
+    borderLeftWidth: 3, borderLeftColor: Colors.dark.violet, paddingLeft: 18,
     marginVertical: 18, backgroundColor: 'rgba(167, 139, 250, 0.06)',
     paddingVertical: 14, borderRadius: 4,
   },
   code_inline: {
     backgroundColor: 'rgba(0, 0, 0, 0.35)', paddingHorizontal: 6, paddingVertical: 3,
-    borderRadius: 6, fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
-    fontSize: 14, color: '#67E8F9', borderWidth: 1, borderColor: 'rgba(148, 163, 184, 0.12)',
+    borderRadius: 6, fontFamily: Fonts.mono,
+    fontSize: 14, color: Colors.dark.cyan, borderWidth: 1, borderColor: 'rgba(148, 163, 184, 0.12)',
   },
   code_block: {
     backgroundColor: 'rgba(0, 0, 0, 0.45)', padding: 16, borderRadius: 12,
-    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    fontFamily: Fonts.mono,
     fontSize: 14, color: '#E2E8F0', marginBottom: 18,
     borderWidth: 1, borderColor: 'rgba(148, 163, 184, 0.12)',
   },

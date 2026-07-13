@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator, FlatList, Platform, Pressable, RefreshControl,
+  FlatList, Platform, Pressable, RefreshControl,
   StyleSheet, Text, View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -8,26 +8,16 @@ import { useRouter } from 'expo-router';
 
 import { API_BASE, fetchWithTimeout } from '@/constants/config';
 import { ContentBadges } from '@/components/content-badges';
-import { VENDOR_META, getContentType, getVendor, type Vendor } from '@/constants/content-types';
+import { CONTENT_TYPE_META, VENDOR_META, getContentType, getVendor, type Vendor } from '@/constants/content-types';
+import { Colors, Fonts } from '@/constants/theme';
+import { Loader } from '@/components/ui/loader';
+import { EmptyState } from '@/components/ui/empty-state';
 import type { KnowledgeNode } from '@/types/nexus';
 
-/* ═══════════════════════ DESIGN TOKENS · NEXUS DARK ═══════════════════════ */
-const C = {
-  bg: '#05060E',
-  surface: 'rgba(16, 21, 38, 0.72)',
-  line: 'rgba(148, 163, 184, 0.10)',
-  text: '#F4F6FB',
-  textDim: '#8A94AD',
-  textFaint: '#586176',
-  violet: '#A78BFA',
-  amber: '#F59E0B',
-};
-
-const SERIF = Platform.select({
-  ios: 'Georgia',
-  android: 'serif',
-  default: 'Georgia, "Times New Roman", serif',
-});
+/* Ámbar de "certification" (content-type), distinto del ámbar de dimensión
+   ANALYTICAL en theme.ts — esta pantalla es vendor-filtered, no dimension-
+   filtered, así que no usa DimensionBadge/getDimensionMeta en absoluto. */
+const AMBER = CONTENT_TYPE_META.certification.color;
 
 type QueueNode = KnowledgeNode;
 
@@ -112,7 +102,7 @@ export default function ReviewQueueScreen() {
                   style={[styles.filterChip, active && { borderColor: meta.color }]}
                 >
                   <View style={[styles.filterDot, { backgroundColor: meta.color }]} />
-                  <Text style={[styles.filterText, active && { color: C.text }]}>{meta.label}</Text>
+                  <Text style={[styles.filterText, active && { color: Colors.dark.text }]}>{meta.label}</Text>
                 </Pressable>
               );
             })}
@@ -121,9 +111,7 @@ export default function ReviewQueueScreen() {
       </View>
 
       {loading && !refreshing ? (
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={C.amber} />
-        </View>
+        <Loader color={AMBER} />
       ) : (
         <FlatList
           data={visibleQueue}
@@ -134,17 +122,16 @@ export default function ReviewQueueScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => { setRefreshing(true); loadQueue(); }}
-              tintColor={C.amber}
+              tintColor={AMBER}
             />
           }
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Text style={styles.emptyGlyph}>◇</Text>
-              <Text style={styles.emptyTitle}>Nothing to review yet</Text>
-              <Text style={styles.emptyText}>
-                Certification topics appear here once study material is ingested into the knowledge base.
-              </Text>
-            </View>
+            <EmptyState
+              glyph="◇"
+              accentColor={AMBER}
+              title="Nothing to review yet"
+              description="Certification topics appear here once study material is ingested into the knowledge base."
+            />
           }
           renderItem={({ item, index }) => (
             <Pressable
@@ -173,38 +160,36 @@ export default function ReviewQueueScreen() {
 
 /* ═══════════════════════════════ STYLESHEET ═══════════════════════════════ */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
+  container: { flex: 1, backgroundColor: Colors.dark.background },
 
   headerContainer: { paddingHorizontal: 24, paddingBottom: 18, paddingTop: 8 },
-  overline: { fontSize: 11, fontWeight: '800', color: C.amber, letterSpacing: 4, marginBottom: 6 },
+  overline: { fontSize: 11, fontWeight: '800', color: AMBER, letterSpacing: 4, marginBottom: 6 },
   header: {
-    fontSize: 44, color: C.text, fontFamily: SERIF,
+    fontSize: 44, color: Colors.dark.text, fontFamily: Fonts.serif,
     fontWeight: Platform.OS === 'android' ? 'normal' : '700',
     letterSpacing: -0.5, lineHeight: 50,
   },
-  subheader: { color: C.textDim, fontSize: 13, marginTop: 8, lineHeight: 19 },
+  subheader: { color: Colors.dark.textDim, fontSize: 13, marginTop: 8, lineHeight: 19 },
 
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 },
   filterChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: C.surface,
-    borderWidth: 1, borderColor: C.line,
+    backgroundColor: Colors.dark.surface,
+    borderWidth: 1, borderColor: Colors.dark.border,
     borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6,
   },
   filterDot: { width: 6, height: 6, borderRadius: 3 },
-  filterText: { color: C.textDim, fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
-
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  filterText: { color: Colors.dark.textDim, fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
 
   listContainer: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 6 },
   queueCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: C.surface,
-    borderWidth: 1, borderColor: C.line,
+    backgroundColor: Colors.dark.surface,
+    borderWidth: 1, borderColor: Colors.dark.border,
     borderRadius: 18, padding: 18, marginBottom: 12,
   },
   queuePosition: {
-    color: C.textFaint, fontSize: 15, fontWeight: '800',
+    color: Colors.dark.textFaint, fontSize: 15, fontWeight: '800',
     fontVariant: ['tabular-nums'],
   },
   queueBody: { flex: 1, minWidth: 0 },
@@ -212,14 +197,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', gap: 8, marginBottom: 8,
   },
-  lastReviewed: { color: C.textFaint, fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
-  neverReviewed: { color: C.amber, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
-  queueTitle: { color: C.text, fontSize: 17, fontFamily: SERIF, lineHeight: 24 },
-  queueMeta: { color: C.textDim, fontSize: 12, fontWeight: '600', marginTop: 4 },
-  queueGlyph: { color: C.amber, fontSize: 16 },
-
-  emptyContainer: { alignItems: 'center', paddingVertical: 56, paddingHorizontal: 16 },
-  emptyGlyph: { color: C.amber, fontSize: 36, marginBottom: 12, opacity: 0.7 },
-  emptyTitle: { color: C.text, fontSize: 20, fontFamily: SERIF, marginBottom: 8, textAlign: 'center' },
-  emptyText: { color: C.textDim, fontSize: 14, textAlign: 'center', lineHeight: 21 },
+  lastReviewed: { color: Colors.dark.textFaint, fontSize: 10, fontWeight: '700', letterSpacing: 0.5 },
+  neverReviewed: { color: AMBER, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  queueTitle: { color: Colors.dark.text, fontSize: 17, fontFamily: Fonts.serif, lineHeight: 24 },
+  queueMeta: { color: Colors.dark.textDim, fontSize: 12, fontWeight: '600', marginTop: 4 },
+  queueGlyph: { color: AMBER, fontSize: 16 },
 });

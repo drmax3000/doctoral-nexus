@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, ScrollView, ActivityIndicator, Dimensions } from 'react-native';
+import { StyleSheet, Text, View, ScrollView, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SymbolView } from 'expo-symbols';
 import { API_BASE, fetchWithTimeout } from '@/constants/config';
 import KnowledgeGraph from '@/components/knowledge-graph';
 import { CONTENT_TYPE_META, VENDOR_META, type ContentType, type Vendor } from '@/constants/content-types';
+import { Colors, Fonts, getDimensionMeta } from '@/constants/theme';
+import { DimensionBadge } from '@/components/ui/dimension-badge';
+import { Loader } from '@/components/ui/loader';
 
 const { width } = Dimensions.get('window');
 
@@ -32,9 +36,8 @@ export default function TelemetryDashboard() {
 
   if (loading) {
     return (
-      <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-        <ActivityIndicator size="large" color="#06b6d4" />
-        <Text style={styles.loadingText}>Sincronizando telemetría...</Text>
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <Loader label="SINCRONIZANDO TELEMETRÍA" />
       </View>
     );
   }
@@ -49,22 +52,22 @@ export default function TelemetryDashboard() {
 
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]} contentContainerStyle={{ paddingBottom: 40 }}>
-      
+
       <View style={styles.headerContainer}>
         <Text style={styles.header}>Estadísticas</Text>
         <Text style={styles.subtitle}>Doctoral Nexus Telemetry</Text>
       </View>
-      
+
       {/* GLOBAL STATS */}
       <View style={styles.statsRow}>
         <View style={styles.statBox}>
-          <Text style={{fontSize: 24}}>📄</Text>
+          <SymbolView name={{ ios: 'doc.text.fill', android: 'description', web: 'description' }} size={24} tintColor={Colors.dark.textDim} />
           <Text style={styles.statValue}>{data.nodes.total}</Text>
           <Text style={styles.statLabel}>Extractos Totales</Text>
         </View>
-        
+
         <View style={styles.statBox}>
-          <Text style={{fontSize: 24}}>💡</Text>
+          <SymbolView name={{ ios: 'lightbulb.fill', android: 'lightbulb', web: 'lightbulb' }} size={24} tintColor={Colors.dark.violet} />
           <Text style={styles.statValue}>{data.observations.total}</Text>
           <Text style={styles.statLabel}>Observaciones</Text>
         </View>
@@ -80,12 +83,18 @@ export default function TelemetryDashboard() {
         <View style={styles.metricRow}>
           <View>
             <Text style={styles.metricLabel}>FTS5 Search Engine</Text>
-            <Text style={[styles.metricValue, { color: data.system.ftsEnabled ? '#10b981' : '#f43f5e' }]}>
+            <Text style={[styles.metricValue, { color: data.system.ftsEnabled ? Colors.dark.emerald : Colors.dark.rose }]}>
               {data.system.ftsEnabled ? 'Online & Active' : 'Offline / Fallback'}
             </Text>
             <Text style={styles.metricSub}>Full-Text Search AI Correlations</Text>
           </View>
-          <Text style={{fontSize: 32}}>{data.system.ftsEnabled ? "🟢" : "⚠️"}</Text>
+          <SymbolView
+            name={data.system.ftsEnabled
+              ? { ios: 'checkmark.circle.fill', android: 'check_circle', web: 'check_circle' }
+              : { ios: 'exclamationmark.triangle.fill', android: 'warning', web: 'warning' }}
+            size={30}
+            tintColor={data.system.ftsEnabled ? Colors.dark.emerald : Colors.dark.rose}
+          />
         </View>
       </View>
 
@@ -101,7 +110,7 @@ export default function TelemetryDashboard() {
               <Text style={styles.barCount}>{item.count} nodos</Text>
             </View>
             <View style={styles.barTrack}>
-              <View style={[styles.barFill, { width: `${percentage}%`, backgroundColor: '#0ea5e9' }]} />
+              <View style={[styles.barFill, { width: `${percentage}%`, backgroundColor: Colors.dark.cyan }]} />
             </View>
           </View>
         );
@@ -122,7 +131,7 @@ export default function TelemetryDashboard() {
                   <Text style={styles.barCount}>{item.count} nodos</Text>
                 </View>
                 <View style={styles.barTrack}>
-                  <View style={[styles.barFill, { width: `${percentage}%`, backgroundColor: meta?.color ?? '#8A94AD' }]} />
+                  <View style={[styles.barFill, { width: `${percentage}%`, backgroundColor: meta?.color ?? Colors.dark.textDim }]} />
                 </View>
               </View>
             );
@@ -139,37 +148,34 @@ export default function TelemetryDashboard() {
                   <Text style={styles.barCount}>{item.count} temas</Text>
                 </View>
                 <View style={styles.barTrack}>
-                  <View style={[styles.barFill, { width: `${percentage}%`, backgroundColor: meta?.color ?? '#8A94AD' }]} />
+                  <View style={[styles.barFill, { width: `${percentage}%`, backgroundColor: meta?.color ?? Colors.dark.textDim }]} />
                 </View>
               </View>
             );
           })}
           {data.certification && data.certification.quizItemsTotal > 0 && (
-            <Text style={styles.certProgress}>
+            <Text style={[styles.certProgress, { color: CONTENT_TYPE_META.certification.color }]}>
               ◇ {data.certification.reviewedCount} temas repasados · {data.certification.quizItemsTotal} preguntas de autoevaluación en el corpus
             </Text>
           )}
         </>
       )}
 
-      {/* OBSERVATION DIMENSIONS */}
+      {/* OBSERVATION DIMENSIONS — la fuente de color es getDimensionMeta(), la
+          misma que usan node/[id].tsx y observations.tsx; ya no una paleta propia. */}
       <Text style={styles.sectionTitle}>Distribución de Observaciones</Text>
       {data.observations.byDimension && data.observations.byDimension.map((item: any, index: number) => {
-        // Find a cool color per dimension
-        const color = item.dimension === 'THEORETICAL' ? '#3b82f6' : 
-                      item.dimension === 'METHODOLOGICAL' ? '#f59e0b' : 
-                      item.dimension === 'EMPIRICAL' ? '#10b981' : '#a855f7';
-        
+        const meta = getDimensionMeta(item.dimension);
         const percentage = Math.min((item.count / data.observations.total) * 100, 100);
 
         return (
           <View key={`obs-${index}`} style={styles.barContainer}>
             <View style={styles.barHeader}>
-              <Text style={styles.barTitle}>{item.dimension}</Text>
+              <DimensionBadge dimension={item.dimension} />
               <Text style={styles.barCount}>{item.count}</Text>
             </View>
             <View style={styles.barTrack}>
-              <View style={[styles.barFill, { width: `${percentage}%`, backgroundColor: color }]} />
+              <View style={[styles.barFill, { width: `${percentage}%`, backgroundColor: meta.color }]} />
             </View>
           </View>
         );
@@ -179,9 +185,9 @@ export default function TelemetryDashboard() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#020617', // Very dark slate
+  container: {
+    flex: 1,
+    backgroundColor: Colors.dark.background,
     paddingHorizontal: 20,
   },
   center: {
@@ -192,28 +198,23 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 30,
   },
-  header: { 
-    fontSize: 34, 
-    fontWeight: '900', 
-    color: '#f8fafc', 
-    letterSpacing: -1 
+  header: {
+    fontSize: 34,
+    fontFamily: Fonts.serif,
+    fontWeight: '900',
+    color: Colors.dark.text,
+    letterSpacing: -1
   },
-  subtitle: { 
-    fontSize: 16, 
-    color: '#06b6d4', 
-    marginTop: 4, 
+  subtitle: {
+    fontSize: 16,
+    color: Colors.dark.cyan,
+    marginTop: 4,
     fontWeight: '600',
     letterSpacing: 1,
     textTransform: 'uppercase'
   },
-  loadingText: {
-    marginTop: 16,
-    color: '#94a3b8',
-    fontSize: 16,
-    fontWeight: '600'
-  },
   errorText: {
-    color: '#ef4444',
+    color: Colors.dark.rose,
     fontSize: 18,
     fontWeight: '700'
   },
@@ -224,56 +225,57 @@ const styles = StyleSheet.create({
   },
   statBox: {
     width: (width - 60) / 2,
-    backgroundColor: '#0f172a',
+    backgroundColor: Colors.dark.surface,
     borderRadius: 20,
     padding: 20,
     alignItems: 'flex-start',
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: Colors.dark.border,
   },
   statValue: {
     fontSize: 32,
     fontWeight: '900',
-    color: '#f8fafc',
+    color: Colors.dark.text,
     marginTop: 12,
   },
   statLabel: {
     fontSize: 13,
-    color: '#64748b',
+    color: Colors.dark.textDim,
     fontWeight: '700',
     marginTop: 4,
   },
   sectionTitle: {
     fontSize: 18,
+    fontFamily: Fonts.serif,
     fontWeight: '700',
-    color: '#e2e8f0',
+    color: Colors.dark.text,
     marginBottom: 16,
     marginTop: 8,
     letterSpacing: 0.5,
   },
-  metricCard: { 
-    backgroundColor: '#0f172a', 
-    padding: 24, 
-    borderRadius: 20, 
-    marginBottom: 32, 
+  metricCard: {
+    backgroundColor: Colors.dark.surface,
+    padding: 24,
+    borderRadius: 20,
+    marginBottom: 32,
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: Colors.dark.border,
   },
   metricRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  metricLabel: { fontSize: 13, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, fontWeight: '700' },
+  metricLabel: { fontSize: 13, color: Colors.dark.textDim, textTransform: 'uppercase', letterSpacing: 1, fontWeight: '700' },
   metricValue: { fontSize: 22, fontWeight: '900', marginTop: 6, marginBottom: 4 },
-  metricSub: { fontSize: 14, color: '#64748b', fontWeight: '500' },
+  metricSub: { fontSize: 14, color: Colors.dark.textFaint, fontWeight: '500' },
   barContainer: {
     marginBottom: 16,
-    backgroundColor: '#0f172a',
+    backgroundColor: Colors.dark.surface,
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#1e293b',
+    borderColor: Colors.dark.border,
   },
   barHeader: {
     flexDirection: 'row',
@@ -283,19 +285,19 @@ const styles = StyleSheet.create({
   },
   barTitle: {
     fontSize: 14,
-    color: '#e2e8f0',
+    color: Colors.dark.text,
     fontWeight: '700',
     flex: 1,
     paddingRight: 10,
   },
   barCount: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: Colors.dark.textDim,
     fontWeight: '600',
   },
   barTrack: {
     height: 8,
-    backgroundColor: '#1e293b',
+    backgroundColor: 'rgba(148, 163, 184, 0.15)',
     borderRadius: 4,
     overflow: 'hidden',
   },
@@ -304,7 +306,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   certProgress: {
-    color: '#f59e0b',
     fontSize: 12,
     fontWeight: '700',
     marginTop: 4,

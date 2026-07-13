@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  StyleSheet, Text, View, FlatList, ActivityIndicator, RefreshControl,
+  StyleSheet, Text, View, FlatList, RefreshControl,
   Platform, UIManager, TextInput, Pressable, Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,35 +16,19 @@ import {
   CONTENT_TYPE_META, VENDOR_META, getContentType, getVendor,
   type ContentType, type Vendor,
 } from '@/constants/content-types';
-
-/* ═══════════════════════ DESIGN TOKENS · NEXUS DARK ═══════════════════════ */
-const C = {
-  bg: '#05060E',                                  // ink void (más profundo que #020617)
-  surface: 'rgba(16, 21, 38, 0.72)',              // glass base
-  surfaceHi: 'rgba(24, 31, 54, 0.85)',            // glass elevado
-  line: 'rgba(148, 163, 184, 0.10)',              // hairline
-  lineFocus: 'rgba(167, 139, 250, 0.55)',
-  text: '#F4F6FB',
-  textDim: '#8A94AD',
-  textFaint: '#586176',
-  violet: '#A78BFA',                              // acento primario (conocimiento)
-  violetDeep: '#7C5CE0',
-  cyan: '#67E8F9',                                // acento secundario (síntesis)
-  emerald: '#34D399',
-  rose: '#FB7185',
-};
-
-const SERIF = Platform.select({
-  ios: 'Georgia',
-  android: 'serif',
-  default: 'Georgia, "Times New Roman", serif',
-});
+import { Colors, Fonts } from '@/constants/theme';
+import { Loader } from '@/components/ui/loader';
+import { ErrorCard } from '@/components/ui/error-card';
+import { EmptyState } from '@/components/ui/empty-state';
 
 import type { KnowledgeNode } from '@/types/nexus';
 
 type DocumentNode = KnowledgeNode;
 
-/* ─────────────── Micro-interacción: tarjeta con escala al presionar ─────────────── */
+/* ─────────────── Micro-interacción: tarjeta con escala al presionar ───────────────
+   Animated.View (no <Card>) a propósito: el press-scale necesita un nodo animable,
+   y este es el elemento con más renders del app (FlatList) — misma paleta de
+   theme.ts que <Card>, sin forzar el primitivo no-animado a un caso que no cubre. */
 function NodeCard({ item, onPress }: { item: DocumentNode; onPress: () => void }) {
   const scale = useRef(new Animated.Value(1)).current;
 
@@ -167,8 +151,17 @@ export default function DoctoralNexusCore() {
   }, []);
 
   /* Los filtros por tipo/vendor solo existen en pantalla cuando el KB tiene
-     ambos mundos; con una biblioteca 100% doctoral la UI queda como siempre. */
+     mas de un mundo; con una biblioteca 100% doctoral la UI queda como siempre.
+     Los chips se arman dinamicamente segun que tipos existan de verdad. */
   const hasCertContent = useMemo(() => nodes.some(n => getContentType(n) === 'certification'), [nodes]);
+  const hasGeneralContent = useMemo(() => nodes.some(n => getContentType(n) === 'general'), [nodes]);
+  const showTypeFilter = hasCertContent || hasGeneralContent;
+  const typeChips = useMemo(() => {
+    const chips: ContentType[] = ['doctoral'];
+    if (hasCertContent) chips.push('certification');
+    if (hasGeneralContent) chips.push('general');
+    return chips;
+  }, [hasCertContent, hasGeneralContent]);
   const availableVendors = useMemo(
     () => [...new Set(nodes.map(getVendor).filter(Boolean))] as Vendor[],
     [nodes],
@@ -207,17 +200,12 @@ export default function DoctoralNexusCore() {
     ];
 
     return (
-      <View style={styles.emptyContainer}>
-        <Text style={styles.emptyGlyph}>◌</Text>
-        <Text style={styles.emptyTitle}>
-          {nodes.length === 0 ? "Knowledge base is empty" : `Nothing matches “${searchQuery}”`}
-        </Text>
-        <Text style={styles.emptyText}>
-          {nodes.length === 0
-            ? "Run 'npm run ingest' to populate your SQLite database with documents."
-            : "Your knowledge base does contain these threads — pull one:"}
-        </Text>
-
+      <EmptyState
+        title={nodes.length === 0 ? "Knowledge base is empty" : `Nothing matches "${searchQuery}"`}
+        description={nodes.length === 0
+          ? "Run 'npm run ingest' to populate your SQLite database with documents."
+          : "Your knowledge base does contain these threads — pull one:"}
+      >
         <View style={styles.suggestionWrap}>
           {suggestions.map((s, i) => (
             <Pressable
@@ -230,7 +218,7 @@ export default function DoctoralNexusCore() {
             </Pressable>
           ))}
         </View>
-      </View>
+      </EmptyState>
     );
   };
 
@@ -256,7 +244,7 @@ export default function DoctoralNexusCore() {
           <TextInput
             style={styles.searchInput}
             placeholder="Search framework, author, concept…"
-            placeholderTextColor={C.textFaint}
+            placeholderTextColor={Colors.dark.textFaint}
             value={searchQuery}
             onChangeText={setSearchQuery}
             onFocus={() => setSearchFocused(true)}
@@ -269,9 +257,9 @@ export default function DoctoralNexusCore() {
           )}
         </View>
 
-        {hasCertContent && (
+        {showTypeFilter && (
           <View style={styles.filterRow}>
-            {(['doctoral', 'certification'] as ContentType[]).map(type => {
+            {typeChips.map(type => {
               const active = typeFilter === type;
               const meta = CONTENT_TYPE_META[type];
               return (
@@ -305,7 +293,7 @@ export default function DoctoralNexusCore() {
                   style={[styles.filterChip, active && { borderColor: meta.color }]}
                 >
                   <View style={[styles.filterVendorDot, { backgroundColor: meta.color }]} />
-                  <Text style={[styles.filterChipText, active && { color: C.text }]}>
+                  <Text style={[styles.filterChipText, active && { color: Colors.dark.text }]}>
                     {meta.label}
                   </Text>
                 </Pressable>
@@ -315,18 +303,10 @@ export default function DoctoralNexusCore() {
         )}
       </View>
 
-      {networkError && (
-        <View style={styles.errorCard}>
-          <Text style={styles.errorTitle}>⚠ Connection error</Text>
-          <Text style={styles.errorText}>{networkError}</Text>
-        </View>
-      )}
+      {networkError && <ErrorCard message={networkError} style={styles.errorCard} />}
 
       {loading && !refreshing ? (
-        <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color={C.violet} />
-          <Text style={styles.loaderText}>SYNCHRONIZING K3s SWARM</Text>
-        </View>
+        <Loader label="SYNCHRONIZING K3s SWARM" />
       ) : (
         <FlatList
           data={filteredNodes}
@@ -338,7 +318,7 @@ export default function DoctoralNexusCore() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={() => loadArchitecture(true)}
-              tintColor={C.violet}
+              tintColor={Colors.dark.violet}
             />
           }
           renderItem={({ item }) => (
@@ -359,7 +339,7 @@ export default function DoctoralNexusCore() {
 
 /* ═══════════════════════════════ STYLESHEET ═══════════════════════════════ */
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: C.bg },
+  container: { flex: 1, backgroundColor: Colors.dark.background },
 
   ambientHalo: {
     position: 'absolute',
@@ -373,101 +353,81 @@ const styles = StyleSheet.create({
   /* Header editorial: overline técnica + serif de gran cuerpo. */
   headerContainer: { paddingHorizontal: 24, paddingBottom: 18, paddingTop: 8 },
   overline: {
-    fontSize: 11, fontWeight: '800', color: C.violet,
+    fontSize: 11, fontWeight: '800', color: Colors.dark.violet,
     letterSpacing: 4, marginBottom: 6,
   },
   header: {
-    fontSize: 44, color: C.text, fontFamily: SERIF,
+    fontSize: 44, color: Colors.dark.text, fontFamily: Fonts.serif,
     fontWeight: Platform.OS === 'android' ? 'normal' : '700',
     letterSpacing: -0.5, lineHeight: 50,
   },
 
   statsRow: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 12 },
-  statText: { color: C.textDim, fontSize: 12, fontWeight: '600', letterSpacing: 0.5 },
-  statValue: { color: C.text, fontWeight: '800', fontSize: 13 },
-  statDivider: { width: 1, height: 12, backgroundColor: C.line },
+  statText: { color: Colors.dark.textDim, fontSize: 12, fontWeight: '600', letterSpacing: 0.5 },
+  statValue: { color: Colors.dark.text, fontWeight: '800', fontSize: 13 },
+  statDivider: { width: 1, height: 12, backgroundColor: Colors.dark.border },
 
   /* Buscador glass con estado de foco (glow violeta). */
   searchContainer: {
     marginTop: 20,
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: C.surface,
+    backgroundColor: Colors.dark.surface,
     borderRadius: 16,
-    borderWidth: 1, borderColor: C.line,
+    borderWidth: 1, borderColor: Colors.dark.border,
     paddingHorizontal: 16,
     boxShadow: '0px 6px 18px rgba(0, 0, 0, 0.35)',
   },
   searchContainerFocused: {
-    borderColor: C.lineFocus,
+    borderColor: Colors.dark.borderFocus,
     boxShadow: '0px 0px 22px rgba(167, 139, 250, 0.18)',
   },
-  searchIcon: { color: C.textDim, fontSize: 18, marginRight: 10 },
+  searchIcon: { color: Colors.dark.textDim, fontSize: 18, marginRight: 10 },
   searchInput: {
-    flex: 1, color: C.text, paddingVertical: 14,
+    flex: 1, color: Colors.dark.text, paddingVertical: 14,
     fontSize: 15, fontWeight: '500',
   },
-  searchClear: { color: C.textFaint, fontSize: 13, fontWeight: '800', padding: 4 },
+  searchClear: { color: Colors.dark.textFaint, fontSize: 13, fontWeight: '800', padding: 4 },
 
   /* Chips de filtro tipo/vendor: mismo lenguaje glass que el buscador. */
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 14 },
   filterChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: C.surface,
-    borderWidth: 1, borderColor: C.line,
+    backgroundColor: Colors.dark.surface,
+    borderWidth: 1, borderColor: Colors.dark.border,
     borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6,
   },
-  filterChipText: { color: C.textDim, fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
+  filterChipText: { color: Colors.dark.textDim, fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
   filterVendorDot: { width: 6, height: 6, borderRadius: 3 },
-  filterDivider: { width: 1, height: 14, backgroundColor: C.line, marginHorizontal: 2 },
+  filterDivider: { width: 1, height: 14, backgroundColor: Colors.dark.border, marginHorizontal: 2 },
 
-  errorCard: {
-    marginHorizontal: 24, marginBottom: 16,
-    backgroundColor: 'rgba(251, 113, 133, 0.08)',
-    borderWidth: 1, borderColor: 'rgba(251, 113, 133, 0.35)',
-    borderRadius: 16, padding: 16,
-  },
-  errorTitle: { color: C.rose, fontWeight: '800', fontSize: 14, marginBottom: 4, letterSpacing: 0.5 },
-  errorText: { color: C.text, fontSize: 13, lineHeight: 20 },
-
-  loaderContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loaderText: {
-    color: C.textDim, marginTop: 18, fontWeight: '700',
-    fontSize: 11, letterSpacing: 3,
-  },
+  errorCard: { marginHorizontal: 24, marginBottom: 16 },
 
   /* Zero-state: chips accionables, nunca texto muerto. */
-  emptyContainer: { alignItems: 'center', paddingVertical: 56, paddingHorizontal: 8 },
-  emptyGlyph: { color: C.violet, fontSize: 40, marginBottom: 14, opacity: 0.7 },
-  emptyTitle: {
-    color: C.text, fontSize: 20, fontFamily: SERIF, textAlign: 'center',
-    marginBottom: 8, lineHeight: 28,
-  },
-  emptyText: { color: C.textDim, fontSize: 14, textAlign: 'center', lineHeight: 21, marginBottom: 24 },
   suggestionWrap: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 10 },
   suggestionChip: {
-    backgroundColor: C.surface,
+    backgroundColor: Colors.dark.surface,
     borderWidth: 1, borderColor: 'rgba(167, 139, 250, 0.25)',
     borderRadius: 14, paddingHorizontal: 14, paddingVertical: 9,
     maxWidth: 280,
   },
-  suggestionChipPressed: { backgroundColor: C.surfaceHi, borderColor: C.lineFocus },
-  suggestionKind: { color: C.violet, fontSize: 9, fontWeight: '900', letterSpacing: 2, marginBottom: 2 },
-  suggestionLabel: { color: C.text, fontSize: 13, fontWeight: '600' },
+  suggestionChipPressed: { backgroundColor: Colors.dark.surfaceHi, borderColor: Colors.dark.borderFocus },
+  suggestionKind: { color: Colors.dark.violet, fontSize: 9, fontWeight: '900', letterSpacing: 2, marginBottom: 2 },
+  suggestionLabel: { color: Colors.dark.text, fontSize: 13, fontWeight: '600' },
 
   /* Tarjeta de nodo: glass estratificado + riel luminoso. */
   listContainer: { paddingHorizontal: 20, paddingBottom: 80, paddingTop: 6 },
   nodeCard: {
-    backgroundColor: C.surface,
+    backgroundColor: Colors.dark.surface,
     borderRadius: 22,
     marginBottom: 16,
     flexDirection: 'row',
     overflow: 'hidden',
-    borderWidth: 1, borderColor: C.line,
+    borderWidth: 1, borderColor: Colors.dark.border,
     boxShadow: '0px 12px 28px rgba(0, 0, 0, 0.45)',
   },
   nodeRail: {
     width: 3,
-    backgroundColor: C.violet,
+    backgroundColor: Colors.dark.violet,
     boxShadow: '0px 0px 12px rgba(167, 139, 250, 0.8)',
   },
   nodeContent: { padding: 20, flex: 1 },
@@ -478,7 +438,7 @@ const styles = StyleSheet.create({
   },
   nodeEyebrow: {
     flex: 1, fontSize: 10, fontWeight: '900',
-    color: C.textDim, letterSpacing: 2.5,
+    color: Colors.dark.textDim, letterSpacing: 2.5,
   },
   confidenceBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -487,16 +447,16 @@ const styles = StyleSheet.create({
     borderRadius: 8, borderWidth: 1, borderColor: 'rgba(52, 211, 153, 0.25)',
   },
   confidenceDot: {
-    width: 5, height: 5, borderRadius: 3, backgroundColor: C.emerald,
+    width: 5, height: 5, borderRadius: 3, backgroundColor: Colors.dark.emerald,
     boxShadow: '0px 0px 6px rgba(52, 211, 153, 0.9)',
   },
-  confidenceText: { color: C.emerald, fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  confidenceText: { color: Colors.dark.emerald, fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
 
   nodeTitle: {
-    fontSize: 21, color: C.text, fontFamily: SERIF,
+    fontSize: 21, color: Colors.dark.text, fontFamily: Fonts.serif,
     lineHeight: 29, marginBottom: 8,
   },
-  nodeByline: { color: C.textDim, fontSize: 13, fontWeight: '600', marginBottom: 16 },
+  nodeByline: { color: Colors.dark.textDim, fontSize: 13, fontWeight: '600', marginBottom: 16 },
 
   /* Preview de repaso en tarjetas de certificación. */
   reviewPreview: {
@@ -513,11 +473,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 11, paddingVertical: 5,
     borderRadius: 10, borderWidth: 1, borderColor: 'rgba(103, 232, 249, 0.18)',
   },
-  taxonomyText: { color: C.cyan, fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
+  taxonomyText: { color: Colors.dark.cyan, fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
   versionTag: {
     backgroundColor: 'rgba(148, 163, 184, 0.06)',
-    borderColor: C.line,
+    borderColor: Colors.dark.border,
   },
-  versionText: { color: C.textFaint },
-  readGlyph: { color: C.violet, fontSize: 18, marginLeft: 12 },
+  versionText: { color: Colors.dark.textFaint },
+  readGlyph: { color: Colors.dark.violet, fontSize: 18, marginLeft: 12 },
 });
