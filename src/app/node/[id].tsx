@@ -13,6 +13,7 @@ import { CONTENT_COPY, getContentType } from '@/constants/content-types';
 import { Colors, Fonts, type DimensionKey } from '@/constants/theme';
 import { DimensionBadge } from '@/components/ui/dimension-badge';
 import { Loader } from '@/components/ui/loader';
+import { ExamTrapsCard, ReviewDeck, getExamTraps, getQuizItems } from '@/components/cert-review';
 
 /* Certificación: node.title es solo el slug del vendor ("aws"); capitulo ya
    es un titulo legible ("Chapter 1: ..."). Usado en las tarjetas de
@@ -21,7 +22,6 @@ import { Loader } from '@/components/ui/loader';
 function displayTitle(n: any): string {
   return getContentType(n) === 'certification' ? (n.capitulo || n.title) : n.title;
 }
-import { ExamTrapsCard, ReviewDeck, getExamTraps, getQuizItems } from '@/components/cert-review';
 
 const DIMENSION_KEYS: DimensionKey[] = ['THEORETICAL', 'METHODOLOGICAL', 'EMPIRICAL', 'ANALYTICAL'];
 

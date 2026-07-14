@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports */
 /**
  * DOCTORAL NEXUS — DATA LAYER (SQLite vía node:sqlite, Node >= 22.5)
  *
