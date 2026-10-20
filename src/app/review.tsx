@@ -24,6 +24,9 @@ const AMBER = CONTENT_TYPE_META.certification.color;
 
 type QueueNode = KnowledgeNode;
 type QueueResult = { nodes: QueueNode[]; source: 'backend' | 'fallback' };
+
+// Vacio estable: un [] literal por render invalidaria los useMemo que dependen de el.
+const NO_NODES: never[] = [];
 
 export default function ReviewQueueScreen() {
   const insets = useSafeAreaInsets();
@@ -56,7 +59,7 @@ export default function ReviewQueueScreen() {
     isEmpty: result => result.nodes.length === 0,
   });
   const hasQueue = asyncState.status === 'success' || asyncState.status === 'empty';
-  const queue = hasQueue ? asyncState.data.nodes : [];
+  const queue = hasQueue ? asyncState.data.nodes : NO_NODES;
   const queueSource = hasQueue ? asyncState.data.source : 'fallback';
 
   const visibleQueue = useMemo(

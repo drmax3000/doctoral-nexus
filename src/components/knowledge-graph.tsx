@@ -88,6 +88,9 @@ type Highlight = { kind: 'group'; value: string } | { kind: 'node'; value: strin
 
 type GraphData = { nodes: GraphNode[]; edges: GraphEdge[] };
 
+// Vacio estable: un [] literal por render invalidaria los useMemo que dependen de el.
+const NO_NODES: never[] = [];
+
 export default function KnowledgeGraph() {
   const router = useRouter();
   const [width, setWidth] = useState(0);
@@ -116,8 +119,8 @@ export default function KnowledgeGraph() {
     isEmpty: data => data.nodes.length === 0,
   });
   const hasData = asyncState.status === 'success' || asyncState.status === 'empty';
-  const nodes = hasData ? asyncState.data.nodes : [];
-  const edges = hasData ? asyncState.data.edges : [];
+  const nodes = hasData ? asyncState.data.nodes : NO_NODES;
+  const edges = hasData ? asyncState.data.edges : NO_NODES;
 
   /* Doble codificación: los nodos doctorales conservan color por libro; los
      de certificación se leen por FORMA (cuadrado vs. círculo) y color por
