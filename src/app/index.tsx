@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   StyleSheet, Text, View, FlatList, RefreshControl,
   Platform, UIManager, TextInput, Pressable, Animated,
@@ -6,16 +6,18 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
-import { API_BASE, fetchWithTimeout } from '@/constants/config';
+import { API_BASE, fetchJson } from '@/constants/config';
+import { useAsync } from '@/hooks/use-async';
 import { ContentBadges } from '@/components/content-badges';
 import {
   CONTENT_TYPE_META, VENDOR_META, getContentType, getVendor,
   type ContentType, type Vendor,
 } from '@/constants/content-types';
 import { Colors, Fonts } from '@/constants/theme';
-import { Loader } from '@/components/ui/loader';
 import { ErrorCard } from '@/components/ui/error-card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { SkeletonList } from '@/components/ui/skeleton';
+import { RouteErrorFallback } from '@/components/ui/route-error-fallback';
 
 import type { KnowledgeNode } from '@/types/nexus';
 
@@ -30,7 +32,7 @@ type DocumentNode = KnowledgeNode;
    y este es el elemento con más renders del app (FlatList) — misma paleta de
    theme.ts que <Card>, sin forzar el primitivo no-animado a un caso que no cubre. */
 function NodeCard({ item, onPress }: { item: DocumentNode; onPress: () => void }) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const [scale] = useState(() => new Animated.Value(1));
 
   const animate = (to: number) =>
     Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 40, bounciness: 4 }).start();
@@ -109,46 +111,13 @@ function NodeCard({ item, onPress }: { item: DocumentNode; onPress: () => void }
 export default function DoctoralNexusCore() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [nodes, setNodes] = useState<DocumentNode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [networkError, setNetworkError] = useState<string | null>(null);
+  const fetchNodes = useCallback(() => fetchJson<DocumentNode[]>(`${API_BASE}/api/v1/nexus/nodes`), []);
+  const asyncState = useAsync<DocumentNode[]>(fetchNodes);
+  const nodes = asyncState.status === 'success' || asyncState.status === 'empty' ? asyncState.data : [];
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [typeFilter, setTypeFilter] = useState<ContentType | null>(null);
   const [vendorFilter, setVendorFilter] = useState<Vendor | null>(null);
-
-
-  const loadArchitecture = async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
-    setNetworkError(null);
-
-    try {
-      const response = await fetchWithTimeout(`${API_BASE}/api/v1/nexus/nodes`);
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.indexOf('application/json') !== -1) {
-        const data = await response.json();
-        setNodes(data);
-      } else {
-        throw new Error('502_BAD_GATEWAY');
-      }
-    } catch (error: any) {
-      console.warn('Network error:', error.message);
-
-      let errorMessage = 'Data link failure. Server unreachable.';
-      if (error.name === 'AbortError') errorMessage = 'Extreme latency. (8s timeout).';
-      if (error.message === '502_BAD_GATEWAY') errorMessage = 'Tunnel active, but local backend inoperative.';
-
-      setNetworkError(errorMessage);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    loadArchitecture();
-  }, []);
 
   /* Los filtros por tipo/vendor solo existen en pantalla cuando el KB tiene
      mas de un mundo; con una biblioteca 100% doctoral la UI queda como siempre.
@@ -303,38 +272,60 @@ export default function DoctoralNexusCore() {
         )}
       </View>
 
-      {networkError && <ErrorCard message={networkError} style={styles.errorCard} />}
-
-      {loading && !refreshing ? (
-        <Loader label="SYNCHRONIZING K3s SWARM" />
-      ) : (
-        <FlatList
-          data={filteredNodes}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContainer}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={renderEmptyState}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => loadArchitecture(true)}
-              tintColor={Colors.dark.violet}
-            />
-          }
-          renderItem={({ item }) => (
-            <NodeCard
-              item={item}
-              onPress={() =>
-                // El listado ya no viaja con content masivo: el detalle
-                // hace fetch por id contra /nodes/[id] (ya implementado).
-                router.push({ pathname: '/node/[id]', params: { id: item.id } })
-              }
-            />
-          )}
-        />
-      )}
+      {(() => {
+        switch (asyncState.status) {
+          case 'idle':
+            return <SkeletonList count={3} variant="card" />;
+          case 'loading':
+            return <SkeletonList count={5} variant="card" />;
+          case 'error':
+            return (
+              <ErrorCard
+                message={asyncState.error.message}
+                style={styles.errorCard}
+                onRetry={asyncState.retry}
+                retrying={asyncState.retrying}
+              />
+            );
+          case 'empty':
+            return renderEmptyState();
+          case 'success':
+          default:
+            return (
+              <FlatList
+                data={filteredNodes}
+                keyExtractor={(item) => item.id}
+                contentContainerStyle={styles.listContainer}
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={renderEmptyState}
+                refreshControl={
+                  <RefreshControl
+                    refreshing={asyncState.retrying}
+                    onRefresh={asyncState.retry}
+                    tintColor={Colors.dark.violet}
+                  />
+                }
+                renderItem={({ item }) => (
+                  <NodeCard
+                    item={item}
+                    onPress={() =>
+                      router.push({ pathname: '/node/[id]', params: { id: item.id } })
+                    }
+                  />
+                )}
+              />
+            );
+        }
+      })()}
     </View>
   );
+}
+
+/* Boundary de ruta (auditoria Codex EH-01, nivel 2): Expo Router envuelve
+   esta pantalla en su propio Try y le pasa {error, retry} si el archivo
+   exporta ErrorBoundary. Un error de render aca ya no tumba la tab bar. */
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
+  return <RouteErrorFallback error={error} retry={retry} />;
 }
 
 /* ═══════════════════════════════ STYLESHEET ═══════════════════════════════ */

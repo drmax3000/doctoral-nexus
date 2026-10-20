@@ -1,54 +1,50 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { StyleSheet, Text, View, ScrollView, Dimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SymbolView } from 'expo-symbols';
-import { API_BASE, fetchWithTimeout } from '@/constants/config';
+import { API_BASE, fetchJson } from '@/constants/config';
+import { useAsync } from '@/hooks/use-async';
 import KnowledgeGraph from '@/components/knowledge-graph';
 import { CONTENT_TYPE_META, VENDOR_META, type ContentType, type Vendor } from '@/constants/content-types';
 import { Colors, Fonts, getDimensionMeta } from '@/constants/theme';
 import { DimensionBadge } from '@/components/ui/dimension-badge';
-import { Loader } from '@/components/ui/loader';
+import { ErrorCard } from '@/components/ui/error-card';
+import { SkeletonList } from '@/components/ui/skeleton';
+import { RouteErrorFallback } from '@/components/ui/route-error-fallback';
 
 const { width } = Dimensions.get('window');
 
 export default function TelemetryDashboard() {
   const insets = useSafeAreaInsets();
-  const [data, setData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchTelemetry();
+  const fetchTelemetry = useCallback(async () => {
+    const result = await fetchJson<{ success: boolean; data: any }>(`${API_BASE}/api/v1/nexus/telemetry`);
+    // Antes: un JSON valido con success:false no lanzaba, y quedaba
+    // indistinguible de un fallo real de red (data seguia siendo null).
+    if (!result?.success) throw { kind: 'http', message: 'Telemetry endpoint returned an unsuccessful response.' };
+    return result.data;
   }, []);
 
-  const fetchTelemetry = async () => {
-    try {
-      const response = await fetchWithTimeout(`${API_BASE}/api/v1/nexus/telemetry`);
-      const result = await response.json();
-      if (result.success) {
-        setData(result.data);
-      }
-    } catch (error) {
-      console.error('Failed to fetch telemetry', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const asyncState = useAsync<any>(fetchTelemetry);
+  const data = asyncState.status === 'success' ? asyncState.data : null;
 
-  if (loading) {
+  if (asyncState.status === 'loading') {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
-        <Loader label="SINCRONIZANDO TELEMETRÍA" />
+        <SkeletonList count={3} variant="card" />
       </View>
     );
   }
 
-  if (!data) {
+  if (asyncState.status === 'error') {
     return (
       <View style={[styles.container, styles.center, { paddingTop: insets.top }]}>
-        <Text style={styles.errorText}>No se pudo cargar la telemetría.</Text>
+        <ErrorCard message={asyncState.error.message} onRetry={asyncState.retry} retrying={asyncState.retrying} />
       </View>
     );
   }
+
+  if (!data) return null; // 'idle'/'empty' no ocurren para este fetch — solo satisface a TS
 
   return (
     <ScrollView style={[styles.container, { paddingTop: insets.top }]} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -182,6 +178,10 @@ export default function TelemetryDashboard() {
       })}
     </ScrollView>
   );
+}
+
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
+  return <RouteErrorFallback error={error} retry={retry} />;
 }
 
 const styles = StyleSheet.create({

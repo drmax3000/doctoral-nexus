@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   StyleSheet, View, Text, TextInput, Pressable, ScrollView, Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { API_BASE, fetchWithTimeout } from '@/constants/config';
+import { API_BASE, fetchJson } from '@/constants/config';
+import { useAsync } from '@/hooks/use-async';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Fonts, getDimensionMeta, type DimensionKey } from '@/constants/theme';
 import { Card } from '@/components/ui/card';
-import { Loader } from '@/components/ui/loader';
 import { ErrorCard } from '@/components/ui/error-card';
 import { DimensionBadge } from '@/components/ui/dimension-badge';
+import { SkeletonList } from '@/components/ui/skeleton';
+import { RouteErrorFallback } from '@/components/ui/route-error-fallback';
 
 const DIMENSION_KEYS: DimensionKey[] = ['THEORETICAL', 'METHODOLOGICAL', 'EMPIRICAL', 'ANALYTICAL'];
 
@@ -36,51 +38,37 @@ export default function ObservationsScreen() {
   const [observation, setObservation] = useState('');
   const [dimension, setDimension] = useState<DimensionKey | null>(null);
   const router = useRouter();
-  const [history, setHistory] = useState<Observation[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [networkError, setNetworkError] = useState<string | null>(null);
-
-  const loadHistory = async () => {
-    setNetworkError(null);
-    try {
-      const response = await fetchWithTimeout(`${API_BASE}/api/v1/nexus/observations`);
-      if (response.ok) {
-        const data = await response.json();
-        setHistory(data);
-      } else {
-        throw new Error('Failed to load');
-      }
-    } catch (error: any) {
-      setNetworkError('Data link failure. Server unreachable.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  React.useEffect(() => {
-    loadHistory();
-  }, []);
+  const fetchHistory = useCallback(() => fetchJson<Observation[]>(`${API_BASE}/api/v1/nexus/observations`), []);
+  const asyncState = useAsync<Observation[]>(fetchHistory);
+  const history = asyncState.status === 'success' || asyncState.status === 'empty' ? asyncState.data : [];
 
   const canSave = observation.trim().length > 0 && dimension !== null;
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleSave = async () => {
     if (!canSave || !dimension) return;
+    setSaving(true);
+    setSaveError(null);
     try {
       const payload = { text: observation.trim(), dimension };
-      const response = await fetchWithTimeout(`${API_BASE}/api/v1/nexus/observations`, {
+      await fetchJson(`${API_BASE}/api/v1/nexus/observations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
-      if (response.ok) {
-        const newObs = await response.json();
-        setHistory(prev => [newObs, ...prev]);
-        setObservation('');
-        setDimension(null);
-      }
-    } catch (error) {
-      console.error(error);
-      alert('Failed to save observation. Draft kept.');
+      setObservation('');
+      setDimension(null);
+      // Sin mutación local optimista: un refetch trae el historial ya
+      // ordenado DESC por el backend, mismo dato que devolvería el POST.
+      asyncState.retry();
+    } catch (error: any) {
+      // Auditoria Codex EH-03: nunca reintento automático de un POST no
+      // idempotente — el draft queda intacto, el usuario decide cuándo
+      // volver a tocar "COMMIT TO THESIS".
+      setSaveError(error?.message ?? 'Failed to save observation. Draft kept.');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -135,18 +123,24 @@ export default function ObservationsScreen() {
             disabled={!canSave}
           >
             <Text style={[styles.saveButtonText, canSave && styles.saveButtonTextEnabled]}>
-              {canSave ? 'COMMIT TO THESIS' : dimension ? 'WRITE YOUR INSIGHT' : 'SELECT A DIMENSION'}
+              {saving ? 'SAVING…' : canSave ? 'COMMIT TO THESIS' : dimension ? 'WRITE YOUR INSIGHT' : 'SELECT A DIMENSION'}
             </Text>
           </Pressable>
+          {saveError && <Text style={styles.saveErrorText}>⚠ {saveError} Draft kept — try again.</Text>}
         </Card>
 
         {/* ── Historial relacional ───────────────────────────────── */}
         <Text style={styles.historyTitle}>RECENT INSIGHTS</Text>
 
-        {networkError && <ErrorCard message={networkError} style={styles.errorCard} />}
-
-        {loading ? (
-          <Loader fill={false} />
+        {asyncState.status === 'loading' ? (
+          <SkeletonList count={3} variant="row" />
+        ) : asyncState.status === 'error' ? (
+          <ErrorCard
+            message={asyncState.error.message}
+            style={styles.errorCard}
+            onRetry={asyncState.retry}
+            retrying={asyncState.retrying}
+          />
         ) : (
           history.map(obs => {
             const meta = getDimensionMeta(obs.dimension);
@@ -186,6 +180,10 @@ export default function ObservationsScreen() {
       </ScrollView>
     </View>
   );
+}
+
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
+  return <RouteErrorFallback error={error} retry={retry} />;
 }
 
 /* ═══════════════════════════════ STYLESHEET ═══════════════════════════════ */
@@ -246,6 +244,7 @@ const styles = StyleSheet.create({
   saveButtonDisabled: { backgroundColor: 'transparent', borderColor: Colors.dark.border },
   saveButtonText: { color: Colors.dark.textFaint, fontSize: 13, fontWeight: '900', letterSpacing: 2 },
   saveButtonTextEnabled: { color: '#FFFFFF' },
+  saveErrorText: { color: Colors.dark.rose, fontSize: 12, lineHeight: 18, marginTop: 10 },
 
   /* Historial relacional. */
   historyTitle: {

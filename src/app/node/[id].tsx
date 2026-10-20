@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   StyleSheet, View, Text, ScrollView, TextInput, Pressable,
   Platform, useWindowDimensions, KeyboardAvoidingView, Animated
@@ -6,13 +6,16 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Markdown from 'react-native-markdown-display';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { API_BASE, fetchWithTimeout } from '@/constants/config';
+import { API_BASE, fetchJson } from '@/constants/config';
+import { useAsync } from '@/hooks/use-async';
 import { RELATION_META } from '@/constants/relations';
 import { ContentBadges } from '@/components/content-badges';
 import { CONTENT_COPY, getContentType } from '@/constants/content-types';
 import { Colors, Fonts, type DimensionKey } from '@/constants/theme';
 import { DimensionBadge } from '@/components/ui/dimension-badge';
-import { Loader } from '@/components/ui/loader';
+import { ErrorCard } from '@/components/ui/error-card';
+import { SkeletonList } from '@/components/ui/skeleton';
+import { RouteErrorFallback } from '@/components/ui/route-error-fallback';
 import { ExamTrapsCard, ReviewDeck, getExamTraps, getQuizItems } from '@/components/cert-review';
 
 /* Certificación: node.title es solo el slug del vendor ("aws"); capitulo ya
@@ -29,7 +32,7 @@ const WIDE_BREAKPOINT = 920;
 
 /* ─────────── Panel de síntesis (compartido por dock móvil y split web) ─────────── */
 function SynthesisPanel({
-  node, observation, setObservation, dimension, setDimension, onSave,
+  node, observation, setObservation, dimension, setDimension, onSave, saveError,
 }: {
   node: any;
   observation: string;
@@ -37,6 +40,7 @@ function SynthesisPanel({
   dimension: DimensionKey | null;
   setDimension: (v: DimensionKey) => void;
   onSave: () => void;
+  saveError?: string | null;
 }) {
   const canSave = observation.trim().length > 0 && dimension !== null;
   const copy = CONTENT_COPY[getContentType(node)];
@@ -82,6 +86,7 @@ function SynthesisPanel({
           {canSave ? 'COMMIT INSIGHT' : 'WRITE + CLASSIFY'}
         </Text>
       </Pressable>
+      {saveError && <Text style={styles.inlineErrorText}>⚠ {saveError} Draft kept — try again.</Text>}
     </View>
   );
 }
@@ -183,11 +188,12 @@ function RelationshipsCard({
 }
 
 function ConnectPanel({
-  allNodes, excludeIds, onConnect,
+  allNodes, excludeIds, onConnect, connectError,
 }: {
   allNodes: any[];
   excludeIds: Set<string>;
   onConnect: (targetId: string, type: string) => void;
+  connectError?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -266,6 +272,7 @@ function ConnectPanel({
       {query.trim().length > 0 && results.length === 0 && (
         <Text style={styles.connectEmpty}>No matches.</Text>
       )}
+      {connectError && <Text style={styles.inlineErrorText}>⚠ {connectError}</Text>}
     </View>
   );
 }
@@ -281,51 +288,38 @@ export default function NodeDetailScreen() {
   const [dimension, setDimension] = useState<DimensionKey | null>(null);
   const [dockOpen, setDockOpen] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [node, setNode] = useState<any>(null);
-  const [loadingNode, setLoadingNode] = useState(!nodeData);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   /* Progreso de lectura: hilo violeta que crece con el scroll. */
-  const progress = useRef(new Animated.Value(0)).current;
+  const [progress] = useState(() => new Animated.Value(0));
 
-  React.useEffect(() => {
-    if (nodeData && typeof nodeData === 'string') {
-      try {
-        setNode(JSON.parse(nodeData));
-        setLoadingNode(false);
-      } catch (e) {
-        console.error('Failed to parse nodeData', e);
-      }
-    } else if (id) {
-      // T3 Prereq: Deep link, fetch by id
-      fetchWithTimeout(`${API_BASE}/api/v1/nexus/nodes/${id}`)
-        .then(res => res.json())
-        .then(data => {
-          setNode(data);
-          setLoadingNode(false);
-        })
-        .catch(err => {
-          console.error("Fetch node error:", err);
-          setLoadingNode(false);
-        });
-    } else {
-      setLoadingNode(false);
-    }
+  // nodeData: navegacion legacy con el nodo ya serializado (no la usa nadie
+  // hoy — index.tsx solo pasa `id` — se conserva por si algun otro caller
+  // lo sigue haciendo). id: deep link, fetch por id contra el backend.
+  const fetchNode = useCallback(async (): Promise<any> => {
+    if (nodeData && typeof nodeData === 'string') return JSON.parse(nodeData);
+    if (!id) throw { kind: 'parse', message: 'Missing node id.' };
+    return fetchJson<any>(`${API_BASE}/api/v1/nexus/nodes/${id}`);
   }, [nodeData, id]);
+
+  const asyncState = useAsync<any>(fetchNode);
+  const node = asyncState.status === 'success' ? asyncState.data : null;
 
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [relationships, setRelationships] = useState<any[]>([]);
   const [allNodes, setAllNodes] = useState<any[]>([]);
   React.useEffect(() => {
+    // Best-effort a proposito (per plan): son datos complementarios, no
+    // bloquean la lectura del capitulo principal si fallan.
     if (node?.id) {
-      fetchWithTimeout(`${API_BASE}/api/v1/nexus/suggestions?nodeId=${node.id}`)
-        .then(res => res.json())
+      fetchJson<any[]>(`${API_BASE}/api/v1/nexus/suggestions?nodeId=${node.id}`)
         .then(data => {
           if (Array.isArray(data)) setSuggestions(data);
         })
         .catch(err => console.error("AI Suggestions error:", err));
 
-      fetchWithTimeout(`${API_BASE}/api/v1/nexus/relationships?nodeId=${node.id}`)
-        .then(res => res.json())
+      fetchJson<any[]>(`${API_BASE}/api/v1/nexus/relationships?nodeId=${node.id}`)
         .then(data => {
           if (Array.isArray(data)) setRelationships(data);
         })
@@ -333,8 +327,7 @@ export default function NodeDetailScreen() {
 
       // Dataset chico (decenas/cientos de nodos): traer todo de una vez alcanza
       // para resolver nombres de vinculos y alimentar el picker de conexion manual.
-      fetchWithTimeout(`${API_BASE}/api/v1/nexus/nodes`)
-        .then(res => res.json())
+      fetchJson<any[]>(`${API_BASE}/api/v1/nexus/nodes`)
         .then(data => {
           if (Array.isArray(data)) setAllNodes(data);
         })
@@ -363,38 +356,51 @@ export default function NodeDetailScreen() {
 
   const handleConnect = async (targetId: string, type: string = 'similar') => {
     if (!node?.id || targetId === node.id) return;
+    setConnectError(null);
     try {
-      const response = await fetchWithTimeout(`${API_BASE}/api/v1/nexus/relationships`, {
+      const rel = await fetchJson<any>(`${API_BASE}/api/v1/nexus/relationships`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sourceNodeId: node.id, targetNodeId: targetId, type }),
       });
-      if (!response.ok) throw new Error('Failed to link');
-      const rel = await response.json();
       setRelationships(prev => [rel, ...prev]);
-    } catch (error) {
-      console.error('Error creating relationship', error);
-      alert('Failed to link chapters. Try again.');
+    } catch (error: any) {
+      // Auditoria Codex EH-03: sin reintento automatico de un POST no
+      // idempotente — evita duplicar el vinculo. El usuario decide cuando
+      // volver a tocar "Link".
+      setConnectError(error?.message ?? 'Failed to link chapters. Try again.');
     }
   };
 
-  if (loadingNode) {
+  if (asyncState.status === 'loading') {
     return (
-      <View style={styles.errorContainer}>
-        <Loader />
+      <View style={[styles.container, { paddingTop: insets.top + 24 }]}>
+        <SkeletonList count={1} variant="card" />
       </View>
     );
   }
 
-  if (!node) {
+  if (asyncState.status === 'error') {
+    // El backend ya devuelve 404 distinto de un fallo de red generico
+    // (config.ts:httpErrorMessage) — un chapter borrado no se ve igual que
+    // el tunel caido. Reintentar un 404 no tiene sentido, asi que no se
+    // ofrece el boton en ese caso.
+    const isNotFound = asyncState.error.status === 404;
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Error loading chapter data.</Text>
+        <ErrorCard
+          message={asyncState.error.message}
+          onRetry={isNotFound ? undefined : asyncState.retry}
+          retrying={asyncState.retrying}
+        />
       </View>
     );
   }
+
+  if (!node) return null; // 'idle'/'empty' no ocurren para un fetch de objeto — solo satisface a TS
 
   const handleSave = async () => {
+    setSaveError(null);
     try {
       const payload = {
         text: observation,
@@ -407,22 +413,19 @@ export default function NodeDetailScreen() {
         }
       };
 
-      const response = await fetchWithTimeout(`${API_BASE}/api/v1/nexus/observations`, {
+      await fetchJson(`${API_BASE}/api/v1/nexus/observations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
 
-      if (!response.ok) throw new Error('Failed to save');
-
       setSaved(true);
       setObservation('');
       setDimension(null);
       setTimeout(() => { setSaved(false); setDockOpen(false); }, 1400);
-    } catch (error) {
-      console.error('Error saving observation', error);
+    } catch (error: any) {
       // "Error de red: no cerrar el dock, no borrar el texto (el borrador del doctorante es sagrado)."
-      alert('Failed to save insight to K3s cluster. Draft kept.');
+      setSaveError(error?.message ?? 'Failed to save insight. Draft kept.');
     }
   };
 
@@ -504,6 +507,7 @@ export default function NodeDetailScreen() {
         allNodes={allNodes}
         excludeIds={connectExcludeIds}
         onConnect={handleConnect}
+        connectError={connectError}
       />
     </ScrollView>
   );
@@ -545,6 +549,7 @@ export default function NodeDetailScreen() {
                   observation={observation} setObservation={setObservation}
                   dimension={dimension} setDimension={setDimension}
                   onSave={handleSave}
+                  saveError={saveError}
                 />
               )}
           </View>
@@ -591,11 +596,19 @@ export default function NodeDetailScreen() {
   );
 }
 
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
+  return <RouteErrorFallback error={error} retry={retry} />;
+}
+
 /* ═══════════════════════════════ STYLESHEET ═══════════════════════════════ */
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.dark.background },
-  errorContainer: { flex: 1, backgroundColor: Colors.dark.background, justifyContent: 'center', alignItems: 'center' },
+  errorContainer: {
+    flex: 1, backgroundColor: Colors.dark.background,
+    justifyContent: 'center', alignItems: 'stretch', paddingHorizontal: 24,
+  },
   errorText: { color: Colors.dark.rose, fontSize: 16 },
+  inlineErrorText: { color: Colors.dark.rose, fontSize: 12, lineHeight: 18, marginTop: 10 },
 
   progressTrack: { height: 2, backgroundColor: 'rgba(148, 163, 184, 0.08)' },
   progressFill: {

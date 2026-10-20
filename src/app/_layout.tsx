@@ -3,8 +3,20 @@ import * as SplashScreen from 'expo-splash-screen';
 import { useColorScheme } from 'react-native';
 import { SymbolView } from 'expo-symbols';
 import { Colors, Fonts } from '@/constants/theme';
+import { RouteErrorFallback } from '@/components/ui/route-error-fallback';
+import { initSentry } from '@/constants/sentry';
 
 SplashScreen.preventAutoHideAsync();
+initSentry();
+
+/* Boundary raiz (auditoria Codex EH-01, nivel 1 — ultima red): solo protege
+   ThemeProvider/Tabs, no intenta reconstruir estado de ninguna pantalla
+   (EH-05). Si una ruta individual ya exporta su propio ErrorBoundary
+   (index/observations/review/node/[id]/explore), ese boundary mas cercano
+   captura primero — este solo entra si el fallo viene del shell mismo. */
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
+  return <RouteErrorFallback error={error} retry={retry} showBackToLibrary={false} />;
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();

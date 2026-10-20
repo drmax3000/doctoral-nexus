@@ -1,0 +1,3 @@
+# Allowlist: al contexto de build del frontend solo entra el export web.
+*
+!dist/

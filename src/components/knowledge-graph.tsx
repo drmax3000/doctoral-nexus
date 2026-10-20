@@ -1,11 +1,14 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator, LayoutChangeEvent, Pressable, Animated } from 'react-native';
 import Svg, { Circle, Line, Rect, G } from 'react-native-svg';
 import { useRouter } from 'expo-router';
-import { API_BASE, fetchWithTimeout } from '@/constants/config';
+import { API_BASE, fetchJson } from '@/constants/config';
+import { useAsync } from '@/hooks/use-async';
 import { RELATION_META } from '@/constants/relations';
-import { VENDOR_META, getContentType, getVendor } from '@/constants/content-types';
+import { VENDOR_META, CONTENT_TYPE_META, getContentType, getVendor } from '@/constants/content-types';
 import { ContentBadges } from '@/components/content-badges';
+import { ErrorCard } from '@/components/ui/error-card';
+import { Boundary } from '@/components/ui/boundary';
 import type { KnowledgeNode } from '@/types/nexus';
 
 const AnimatedG = Animated.createAnimatedComponent(G);
@@ -14,6 +17,10 @@ const HEIGHT = 380;
 // Paleta chica ciclada por libro — hace visible si un cluster es intra-libro
 // o cruza fuentes distintas, que es justo la pregunta que motiva el grafo.
 const BOOK_PALETTE = ['#A78BFA', '#67E8F9', '#34D399', '#FBBF24', '#FB7185', '#60A5FA'];
+// Paleta propia para literatura general (investigador) -- tonos teal, distinta
+// de BOOK_PALETTE para que un cluster de literatura general nunca se confunda
+// visualmente con un libro doctoral aunque comparta la forma de circulo.
+const GENERAL_PALETTE = ['#4FB0A0', '#7DD3C0', '#2F8577', '#9AE6D8'];
 
 type GraphNode = KnowledgeNode;
 interface GraphEdge { id: string; sourceNodeId: string; targetNodeId: string; type: string; }
@@ -79,29 +86,38 @@ function simulateForceLayout(nodes: GraphNode[], edges: GraphEdge[], width: numb
 
 type Highlight = { kind: 'group'; value: string } | { kind: 'node'; value: string } | null;
 
+type GraphData = { nodes: GraphNode[]; edges: GraphEdge[] };
+
 export default function KnowledgeGraph() {
   const router = useRouter();
-  const [nodes, setNodes] = useState<GraphNode[]>([]);
-  const [edges, setEdges] = useState<GraphEdge[]>([]);
-  const [loading, setLoading] = useState(true);
   const [width, setWidth] = useState(0);
   const [highlight, setHighlight] = useState<Highlight>(null);
   // Entrada animada: sin esto el grafo aparece como una imagen fija ya
   // resuelta en vez de sentirse como un objeto que se organiza solo.
-  const entrance = React.useRef(new Animated.Value(0)).current;
+  const [entrance] = React.useState(() => new Animated.Value(0));
 
-  useEffect(() => {
-    Promise.all([
-      fetchWithTimeout(`${API_BASE}/api/v1/nexus/nodes`).then(r => r.json()),
-      fetchWithTimeout(`${API_BASE}/api/v1/nexus/relationships`).then(r => r.json()),
-    ])
-      .then(([nodesData, edgesData]) => {
-        if (Array.isArray(nodesData)) setNodes(nodesData);
-        if (Array.isArray(edgesData)) setEdges(edgesData);
-      })
-      .catch(err => console.error('Knowledge graph fetch error:', err))
-      .finally(() => setLoading(false));
+  const fetchGraph = useCallback(async (): Promise<GraphData> => {
+    const [nodesData, edgesData] = await Promise.all([
+      fetchJson<GraphNode[]>(`${API_BASE}/api/v1/nexus/nodes`),
+      fetchJson<GraphEdge[]>(`${API_BASE}/api/v1/nexus/relationships`),
+    ]);
+    return {
+      nodes: Array.isArray(nodesData) ? nodesData : [],
+      edges: Array.isArray(edgesData) ? edgesData : [],
+    };
   }, []);
+
+  /* Auditoria Codex EH-02: antes un fetch fallido dejaba nodes=[] y se veia
+     igual que "Knowledge base is empty" — un fallo real de red no se
+     distinguia de un KB genuinamente vacio. 'empty' del hook ahora se basa
+     solo en nodes.length (KB vacio); "sin links todavia" con nodos
+     presentes sigue siendo una rama de UI aparte, no un error. */
+  const asyncState = useAsync<GraphData>(fetchGraph, {
+    isEmpty: data => data.nodes.length === 0,
+  });
+  const hasData = asyncState.status === 'success' || asyncState.status === 'empty';
+  const nodes = hasData ? asyncState.data.nodes : [];
+  const edges = hasData ? asyncState.data.edges : [];
 
   /* Doble codificación: los nodos doctorales conservan color por libro; los
      de certificación se leen por FORMA (cuadrado vs. círculo) y color por
@@ -117,6 +133,18 @@ export default function KnowledgeGraph() {
     () => [...new Set(nodes.filter(n => getContentType(n) === 'certification').map(getVendor).filter(Boolean))],
     [nodes],
   ) as (keyof typeof VENDOR_META)[];
+
+  /* Literatura general no tiene libro/capitulo como los nodos doctorales, asi
+     que se agrupa por autor (o tema, o titulo como ultimo fallback) en vez de
+     por titulo -- agrupar por titulo tratandolo igual que un libro no tiene
+     sentido para un articulo o tesis suelta. */
+  const generalGroupOf = (n: GraphNode) => n.author || n.tema || n.title;
+  const generalColor = useMemo(() => {
+    const groups = [...new Set(nodes.filter(n => getContentType(n) === 'general').map(generalGroupOf))];
+    const map: Record<string, string> = {};
+    groups.forEach((g, i) => { map[g] = GENERAL_PALETTE[i % GENERAL_PALETTE.length]; });
+    return map;
+  }, [nodes]);
 
   const layout = useMemo(() => {
     if (!width || nodes.length === 0) return null;
@@ -141,7 +169,12 @@ export default function KnowledgeGraph() {
     return map;
   }, [nodes]);
 
-  const groupOf = (n: GraphNode) => (getContentType(n) === 'certification' ? getVendor(n) ?? '' : n.title);
+  const groupOf = (n: GraphNode) => {
+    const contentType = getContentType(n);
+    if (contentType === 'certification') return getVendor(n) ?? '';
+    if (contentType === 'general') return generalGroupOf(n);
+    return n.title;
+  };
 
   /* Tocar un nodo resalta sus vecinos directos (segundo toque en el mismo
      nodo navega al detalle); tocar una categoria de la leyenda filtra por
@@ -182,9 +215,13 @@ export default function KnowledgeGraph() {
 
   return (
     <View style={styles.card} onLayout={onLayout}>
-      {loading ? (
+      {asyncState.status === 'loading' ? (
         <View style={[styles.center, { height: HEIGHT }]}>
           <ActivityIndicator size="small" color="#67E8F9" />
+        </View>
+      ) : asyncState.status === 'error' ? (
+        <View style={[styles.center, { height: HEIGHT }]}>
+          <ErrorCard message={asyncState.error.message} onRetry={asyncState.retry} retrying={asyncState.retrying} />
         </View>
       ) : nodes.length === 0 ? (
         <View style={[styles.center, { height: HEIGHT }]}>
@@ -199,6 +236,18 @@ export default function KnowledgeGraph() {
           </Text>
         </View>
       ) : layout && width > 0 ? (
+        // Boundary local (auditoria Codex EH-01, nivel 3): un fallo en el
+        // render de fuerzas/SVG no debe tumbar toda la pestana de Telemetria.
+        <Boundary
+          fallback={retry => (
+            <View style={[styles.center, { height: HEIGHT }]}>
+              <Text style={styles.emptyText}>Graph failed to render.</Text>
+              <Pressable onPress={retry} hitSlop={12} style={{ marginTop: 10 }}>
+                <Text style={styles.emptySub}>Tap to retry</Text>
+              </Pressable>
+            </View>
+          )}
+        >
         <Svg width={width} height={HEIGHT}>
           {/* Fondo tocable: limpia la seleccion al tocar fuera de un nodo. */}
           <Rect x={0} y={0} width={width} height={HEIGHT} fill="#000000" fillOpacity={0} onPress={() => setHighlight(null)} />
@@ -228,7 +277,8 @@ export default function KnowledgeGraph() {
                 if (isFocused) router.push(`/node/${n.id}`);
                 else setHighlight({ kind: 'node', value: n.id });
               };
-              if (getContentType(n) === 'certification') {
+              const nodeContentType = getContentType(n);
+              if (nodeContentType === 'certification') {
                 const vendor = getVendor(n);
                 const size = isFocused ? 17 : 13;
                 return (
@@ -238,6 +288,22 @@ export default function KnowledgeGraph() {
                     fill={vendor ? VENDOR_META[vendor].color : '#F59E0B'}
                     stroke={isFocused ? '#F4F6FB' : '#05060E'}
                     strokeWidth={isFocused ? 2.5 : 1.5}
+                    opacity={opacity}
+                    onPress={onPress}
+                  />
+                );
+              }
+              if (nodeContentType === 'general') {
+                // Mismo circulo que doctoral, pero con anillo de acento propio
+                // (color de CONTENT_TYPE_META.general) para que sea distinguible
+                // de un vistazo aunque comparta la forma base.
+                return (
+                  <Circle
+                    key={n.id}
+                    cx={p.x} cy={p.y} r={isFocused ? 10 : 7}
+                    fill={generalColor[generalGroupOf(n)] || CONTENT_TYPE_META.general.color}
+                    stroke={isFocused ? '#F4F6FB' : CONTENT_TYPE_META.general.color}
+                    strokeWidth={isFocused ? 2.5 : 2}
                     opacity={opacity}
                     onPress={onPress}
                   />
@@ -257,6 +323,7 @@ export default function KnowledgeGraph() {
             })}
           </AnimatedG>
         </Svg>
+        </Boundary>
       ) : null}
 
       {/* Tarjeta de info: antes tocar un nodo solo resaltaba sus conexiones
@@ -308,6 +375,23 @@ export default function KnowledgeGraph() {
               </Pressable>
             );
           })}
+          {Object.entries(generalColor).map(([group, color]) => {
+            const active = highlight?.kind === 'group' && highlight.value === group;
+            return (
+              <Pressable
+                key={group}
+                onPress={() => toggleGroup(group)}
+                style={({ pressed }) => [
+                  styles.legendItem,
+                  active && styles.legendItemActive,
+                  pressed && styles.legendItemPressed,
+                ]}
+              >
+                <View style={[styles.legendDotRing, { borderColor: color }]} />
+                <Text style={[styles.legendLabel, active && styles.legendLabelActive]} numberOfLines={1}>{group}</Text>
+              </Pressable>
+            );
+          })}
           {highlight && (
             <Pressable onPress={() => setHighlight(null)} style={styles.clearChip}>
               <Text style={styles.clearChipText}>✕ clear</Text>
@@ -353,6 +437,7 @@ const styles = StyleSheet.create({
   legendItemPressed: { opacity: 0.6 },
   legendDot: { width: 8, height: 8, borderRadius: 4 },
   legendSquare: { width: 8, height: 8, borderRadius: 2 },
+  legendDotRing: { width: 8, height: 8, borderRadius: 4, borderWidth: 2, backgroundColor: 'transparent' },
   legendLabel: { color: '#94a3b8', fontSize: 11, fontWeight: '600' },
   legendLabelActive: { color: '#F4F6FB' },
   clearChip: {
