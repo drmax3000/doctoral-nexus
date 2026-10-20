@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   StyleSheet, View, Text, ScrollView, TextInput, Pressable,
   Platform, useWindowDimensions, KeyboardAvoidingView, Animated
@@ -292,7 +292,7 @@ export default function NodeDetailScreen() {
   const [connectError, setConnectError] = useState<string | null>(null);
 
   /* Progreso de lectura: hilo violeta que crece con el scroll. */
-  const progress = useRef(new Animated.Value(0)).current;
+  const [progress] = useState(() => new Animated.Value(0));
 
   // nodeData: navegacion legacy con el nodo ya serializado (no la usa nadie
   // hoy — index.tsx solo pasa `id` — se conserva por si algun otro caller

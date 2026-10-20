@@ -94,7 +94,7 @@ export default function KnowledgeGraph() {
   const [highlight, setHighlight] = useState<Highlight>(null);
   // Entrada animada: sin esto el grafo aparece como una imagen fija ya
   // resuelta en vez de sentirse como un objeto que se organiza solo.
-  const entrance = React.useRef(new Animated.Value(0)).current;
+  const [entrance] = React.useState(() => new Animated.Value(0));
 
   const fetchGraph = useCallback(async (): Promise<GraphData> => {
     const [nodesData, edgesData] = await Promise.all([

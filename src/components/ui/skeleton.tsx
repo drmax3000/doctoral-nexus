@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Animated, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Colors } from '@/constants/theme';
 
@@ -6,7 +6,7 @@ import { Colors } from '@/constants/theme';
    mientras carga por placeholders del mismo ritmo/alto que el contenido
    real. Shimmer via Animated.loop de opacidad — sin libreria nueva. */
 function useShimmer() {
-  const opacity = useRef(new Animated.Value(0.35)).current;
+  const [opacity] = useState(() => new Animated.Value(0.35));
 
   useEffect(() => {
     const loop = Animated.loop(

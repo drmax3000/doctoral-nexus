@@ -65,6 +65,9 @@ export function useAsync<T>(fn: () => Promise<T>, options: UseAsyncOptions<T> = 
   }, []);
 
   useEffect(() => {
+    // Sincronizar con un sistema externo (el backend) es el uso previsto de un
+    // efecto; el 'loading' sincronico de run() es lo que muestra el skeleton al refetch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (immediate) run();
   }, [fn, immediate, run]);
 

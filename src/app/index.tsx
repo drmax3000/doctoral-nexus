@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   StyleSheet, Text, View, FlatList, RefreshControl,
   Platform, UIManager, TextInput, Pressable, Animated,
@@ -32,7 +32,7 @@ type DocumentNode = KnowledgeNode;
    y este es el elemento con más renders del app (FlatList) — misma paleta de
    theme.ts que <Card>, sin forzar el primitivo no-animado a un caso que no cubre. */
 function NodeCard({ item, onPress }: { item: DocumentNode; onPress: () => void }) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const [scale] = useState(() => new Animated.Value(1));
 
   const animate = (to: number) =>
     Animated.spring(scale, { toValue: to, useNativeDriver: true, speed: 40, bounciness: 4 }).start();
