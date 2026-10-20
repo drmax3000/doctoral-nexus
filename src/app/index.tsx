@@ -27,6 +27,9 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 type DocumentNode = KnowledgeNode;
 
+// Vacio estable: un [] literal por render invalidaria los useMemo que dependen de el.
+const NO_NODES: never[] = [];
+
 /* ─────────────── Micro-interacción: tarjeta con escala al presionar ───────────────
    Animated.View (no <Card>) a propósito: el press-scale necesita un nodo animable,
    y este es el elemento con más renders del app (FlatList) — misma paleta de
@@ -113,7 +116,7 @@ export default function DoctoralNexusCore() {
   const router = useRouter();
   const fetchNodes = useCallback(() => fetchJson<DocumentNode[]>(`${API_BASE}/api/v1/nexus/nodes`), []);
   const asyncState = useAsync<DocumentNode[]>(fetchNodes);
-  const nodes = asyncState.status === 'success' || asyncState.status === 'empty' ? asyncState.data : [];
+  const nodes = asyncState.status === 'success' || asyncState.status === 'empty' ? asyncState.data : NO_NODES;
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocused, setSearchFocused] = useState(false);
   const [typeFilter, setTypeFilter] = useState<ContentType | null>(null);
