@@ -130,3 +130,41 @@ npx expo start                # las rutas API sirven SQL real
 - Frontmatter opcional en los .md: `title, author, capitulo, tema, enfoque, confidence`.
 - Los agentes escriben vía `upsertNode()` con `status:'processing'` → `'offline_ready'`,
   siempre con `traceId` y `lastAgentId` propios. La columna `dimension` es intocable para agentes.
+
+---
+
+# INFRAESTRUCTURA DE ORQUESTACIÓN — Host V15
+
+**V15** es el nombre del host local (Lenovo ThinkPad) donde corre la orquestación de
+Antigravity para este proyecto. Cualquier agente que retome este plan debe asumir que
+opera sobre esta máquina salvo que se indique lo contrario.
+
+## Política de Enrutamiento de Modelos
+
+| Tipo de tarea | Modelo | Vía |
+| --- | --- | --- |
+| Tareas complejas (Arquitectura/Lógica) | `claude-sonnet-5` | API (Anthropic) — nunca chat web |
+| CLI / Parser / procesamiento de logs | Gemini Flash | API (Google) — barato y rápido para volumen alto |
+
+**Nota de vigencia:** "Claude 3.5 Sonnet" quedó retirado el 2025-10-28. El equivalente
+vigente para tareas complejas es `claude-sonnet-5` (o `claude-opus-4-8` si la tarea
+exige más profundidad de razonamiento que velocidad/costo).
+
+## Estado HERMES (base 0 — 2026-07-07)
+
+La base 0 del orquestador HERMES está implementada en `hermes/` (raíz del repo):
+runner con semáforo `.lock`, Gatekeeper pre-hook, integridad SHA256 de rutas protegidas,
+audit log JSONL con rotación, skills en estándar agentskills.io, y manifiestos k8s
+propuestos con SecurityContext inviolable. Agente: Hermes Agent (Nous Research).
+Ver `hermes/README.md` y `hermes/CONTEXT.md` (memoria de trabajo del agente).
+
+## Política de Servidores MCP
+
+- Los servidores MCP se despliegan **centralizados en el host V15**, no como sidecars/plugins
+  locales instalados por herramienta o por cliente individual.
+- La gestión y observación de esos servidores MCP depende **exclusivamente de la interfaz web
+  (GUI)** del host — no de configuraciones de plugin dispersas por proyecto o por editor.
+- Razón: un sidecar local por herramienta reintroduce el mismo problema de versioning drift
+  documentado en [[versioning-drift-sidecar-endpoint]] — cada plugin puede quedar en una versión
+  distinta a la que el servidor MCP central espera. Centralizar en un solo host y una sola GUI
+  elimina esa superficie de desincronización.

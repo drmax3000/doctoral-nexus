@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   FlatList, Platform, Pressable, RefreshControl,
   StyleSheet, Text, View,
@@ -6,12 +6,15 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 
-import { API_BASE, fetchWithTimeout } from '@/constants/config';
+import { API_BASE, fetchJson } from '@/constants/config';
+import { useAsync } from '@/hooks/use-async';
 import { ContentBadges } from '@/components/content-badges';
 import { CONTENT_TYPE_META, VENDOR_META, getContentType, getVendor, type Vendor } from '@/constants/content-types';
 import { Colors, Fonts } from '@/constants/theme';
-import { Loader } from '@/components/ui/loader';
+import { ErrorCard } from '@/components/ui/error-card';
 import { EmptyState } from '@/components/ui/empty-state';
+import { SkeletonList } from '@/components/ui/skeleton';
+import { RouteErrorFallback } from '@/components/ui/route-error-fallback';
 import type { KnowledgeNode } from '@/types/nexus';
 
 /* Ámbar de "certification" (content-type), distinto del ámbar de dimensión
@@ -20,52 +23,41 @@ import type { KnowledgeNode } from '@/types/nexus';
 const AMBER = CONTENT_TYPE_META.certification.color;
 
 type QueueNode = KnowledgeNode;
+type QueueResult = { nodes: QueueNode[]; source: 'backend' | 'fallback' };
 
 export default function ReviewQueueScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const [queue, setQueue] = useState<QueueNode[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
   const [vendorFilter, setVendorFilter] = useState<Vendor | null>(null);
-  const [queueSource, setQueueSource] = useState<'backend' | 'fallback'>('fallback');
 
-  /* Sin setState síncrono aquí: el flag de refresh lo pone el caller
-     (onRefresh), y este callback solo toca estado tras los await. */
-  const loadQueue = useCallback(async () => {
+  /* Auditoria Codex EH-02 (hallazgo mas severo de esta pantalla): antes, si
+     AMBOS niveles del fallback fallaban, el catch interno solo hacia
+     console.warn y dejaba queue=[] — se veia igual que "cola realmente
+     vacia". Ahora el fallback que falla queda DENTRO de la funcion que le
+     pasamos a useAsync: si el segundo intento tambien lanza, la excepcion
+     sale sin capturar y useAsync cae a status:'error' con retry, nunca a
+     'empty'. */
+  const fetchQueue = useCallback(async (): Promise<QueueResult> => {
+    // Contrato extendido (G4): cola ordenada por último repaso en el backend.
+    const params = vendorFilter ? `?vendor=${vendorFilter}` : '';
     try {
-      // Contrato extendido (G4): cola ordenada por último repaso en el backend.
-      const params = vendorFilter ? `?vendor=${vendorFilter}` : '';
-      const response = await fetchWithTimeout(`${API_BASE}/api/v1/nexus/review-queue${params}`);
-      if (response.ok) {
-        const data = await response.json();
-        const nodes = Array.isArray(data) ? data : data?.nodes;
-        if (Array.isArray(nodes)) {
-          setQueue(nodes);
-          setQueueSource('backend');
-          return;
-        }
-      }
-      throw new Error('review-queue not available');
+      const data = await fetchJson<any>(`${API_BASE}/api/v1/nexus/review-queue${params}`);
+      const nodes = Array.isArray(data) ? data : data?.nodes;
+      if (Array.isArray(nodes)) return { nodes, source: 'backend' };
+      throw { kind: 'parse', message: 'review-queue not available' };
     } catch {
       // Fallback hasta que G4 exista: los nodos cert de /nodes, sin historial.
-      try {
-        const response = await fetchWithTimeout(`${API_BASE}/api/v1/nexus/nodes`);
-        const data = await response.json();
-        if (Array.isArray(data)) {
-          setQueue(data.filter((n: QueueNode) => getContentType(n) === 'certification'));
-          setQueueSource('fallback');
-        }
-      } catch (err: any) {
-        console.warn('Review queue error:', err?.message);
-      }
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+      const data = await fetchJson<QueueNode[]>(`${API_BASE}/api/v1/nexus/nodes`);
+      return { nodes: data.filter(n => getContentType(n) === 'certification'), source: 'fallback' };
     }
   }, [vendorFilter]);
 
-  useEffect(() => { loadQueue(); }, [loadQueue]);
+  const asyncState = useAsync<QueueResult>(fetchQueue, {
+    isEmpty: result => result.nodes.length === 0,
+  });
+  const hasQueue = asyncState.status === 'success' || asyncState.status === 'empty';
+  const queue = hasQueue ? asyncState.data.nodes : [];
+  const queueSource = hasQueue ? asyncState.data.source : 'fallback';
 
   const visibleQueue = useMemo(
     () => (vendorFilter && queueSource === 'fallback'
@@ -110,8 +102,15 @@ export default function ReviewQueueScreen() {
         )}
       </View>
 
-      {loading && !refreshing ? (
-        <Loader color={AMBER} />
+      {asyncState.status === 'loading' ? (
+        <SkeletonList count={5} variant="row" />
+      ) : asyncState.status === 'error' ? (
+        <ErrorCard
+          message={asyncState.error.message}
+          style={styles.errorCard}
+          onRetry={asyncState.retry}
+          retrying={asyncState.retrying}
+        />
       ) : (
         <FlatList
           data={visibleQueue}
@@ -120,8 +119,8 @@ export default function ReviewQueueScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl
-              refreshing={refreshing}
-              onRefresh={() => { setRefreshing(true); loadQueue(); }}
+              refreshing={asyncState.retrying}
+              onRefresh={asyncState.retry}
               tintColor={AMBER}
             />
           }
@@ -158,6 +157,10 @@ export default function ReviewQueueScreen() {
   );
 }
 
+export function ErrorBoundary({ error, retry }: { error: Error; retry: () => Promise<void> }) {
+  return <RouteErrorFallback error={error} retry={retry} />;
+}
+
 /* ═══════════════════════════════ STYLESHEET ═══════════════════════════════ */
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.dark.background },
@@ -182,6 +185,7 @@ const styles = StyleSheet.create({
   filterText: { color: Colors.dark.textDim, fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
 
   listContainer: { paddingHorizontal: 20, paddingBottom: 100, paddingTop: 6 },
+  errorCard: { marginHorizontal: 24, marginTop: 6 },
   queueCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: Colors.dark.surface,
